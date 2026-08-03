@@ -3,22 +3,41 @@ import 'dough_style.dart';
 /// Weight of one "large" egg, used to convert an egg count into grams.
 const double gramsPerEgg = 50.0;
 
+/// "Leave this field alone", so `copyWith(x: null)` can mean *clear it*.
+///
+/// Without this, a field the baker has emptied is indistinguishable from one
+/// they did not mention, the old value sticks, and the text box refills itself
+/// mid-edit — you cannot turn 900 into 1000 without going via 91000.
+class _Unset {
+  const _Unset();
+}
+
+const _unset = _Unset();
+
+/// [value] is the sentinel, a number, or null. `num` rather than `double`
+/// because an `Object?` parameter gives up Dart's int-to-double coercion, and
+/// `copyWith(salt: 2)` must keep meaning 2.0 rather than throwing.
+double? _or(Object? value, double? current) =>
+    identical(value, _unset) ? current : (value as num?)?.toDouble();
+
 /// One flour in a blend. [percent] is a share of the dough's flour, and all
 /// parts in a blend are expected to sum to 100.
 class FlourPart {
   const FlourPart({required this.name, required this.percent});
 
   final String name;
-  final double percent;
 
-  FlourPart copyWith({String? name, double? percent}) =>
-      FlourPart(name: name ?? this.name, percent: percent ?? this.percent);
+  /// Null while the baker has the box empty — `validate()` blocks it.
+  final double? percent;
+
+  FlourPart copyWith({String? name, Object? percent = _unset}) =>
+      FlourPart(name: name ?? this.name, percent: _or(percent, this.percent));
 
   Map<String, dynamic> toJson() => {'name': name, 'percent': percent};
 
   factory FlourPart.fromJson(Map<String, dynamic> json) => FlourPart(
     name: json['name'] as String,
-    percent: (json['percent'] as num).toDouble(),
+    percent: (json['percent'] as num?)?.toDouble(),
   );
 
   @override
@@ -35,16 +54,16 @@ class MixIn {
   const MixIn({required this.name, required this.percent});
 
   final String name;
-  final double percent;
+  final double? percent;
 
-  MixIn copyWith({String? name, double? percent}) =>
-      MixIn(name: name ?? this.name, percent: percent ?? this.percent);
+  MixIn copyWith({String? name, Object? percent = _unset}) =>
+      MixIn(name: name ?? this.name, percent: _or(percent, this.percent));
 
   Map<String, dynamic> toJson() => {'name': name, 'percent': percent};
 
   factory MixIn.fromJson(Map<String, dynamic> json) => MixIn(
     name: json['name'] as String,
-    percent: (json['percent'] as num).toDouble(),
+    percent: (json['percent'] as num?)?.toDouble(),
   );
 
   @override
@@ -72,16 +91,13 @@ class Enrichment {
   double get eggGrams => (eggCount ?? 0) * gramsPerEgg;
 
   Enrichment copyWith({
-    double? fatPercent,
-    double? sugarPercent,
-    double? eggCount,
-    bool clearFat = false,
-    bool clearSugar = false,
-    bool clearEggs = false,
+    Object? fatPercent = _unset,
+    Object? sugarPercent = _unset,
+    Object? eggCount = _unset,
   }) => Enrichment(
-    fatPercent: clearFat ? null : (fatPercent ?? this.fatPercent),
-    sugarPercent: clearSugar ? null : (sugarPercent ?? this.sugarPercent),
-    eggCount: clearEggs ? null : (eggCount ?? this.eggCount),
+    fatPercent: _or(fatPercent, this.fatPercent),
+    sugarPercent: _or(sugarPercent, this.sugarPercent),
+    eggCount: _or(eggCount, this.eggCount),
   );
 
   Map<String, dynamic> toJson() => {
@@ -140,8 +156,11 @@ class RecipeInput {
   /// Finished dough weight in grams, for one loaf. Used by the inverse styles.
   final double? totalDoughWeight;
 
-  final double hydration;
-  final double salt;
+  /// Water as a percentage of the DOUGH's flour — the flour you weigh into the
+  /// bowl, not the total including whatever the levain carries in.
+  final double? hydration;
+
+  final double? salt;
 
   /// Instant yeast, as a percentage of flour. [DoughStyle.classic] only.
   final double? yeast;
@@ -162,36 +181,39 @@ class RecipeInput {
 
   Enrichment get enrichmentOrEmpty => enrichment ?? const Enrichment();
 
+  /// Passing null to any nullable field clears it; omitting it keeps what is
+  /// already there. See [_unset].
   RecipeInput copyWith({
     DoughStyle? style,
-    double? flourWeight,
-    double? totalDoughWeight,
-    double? hydration,
-    double? salt,
-    double? yeast,
-    double? levainPercent,
-    double? levainHydration,
-    double? prefermentPercent,
-    double? prefermentHydration,
-    double? prefermentYeast,
-    Enrichment? enrichment,
+    Object? flourWeight = _unset,
+    Object? totalDoughWeight = _unset,
+    Object? hydration = _unset,
+    Object? salt = _unset,
+    Object? yeast = _unset,
+    Object? levainPercent = _unset,
+    Object? levainHydration = _unset,
+    Object? prefermentPercent = _unset,
+    Object? prefermentHydration = _unset,
+    Object? prefermentYeast = _unset,
+    Object? enrichment = _unset,
     List<FlourPart>? flourBlend,
     List<MixIn>? mixIns,
     int? loaves,
-    bool clearEnrichment = false,
   }) => RecipeInput(
     style: style ?? this.style,
-    flourWeight: flourWeight ?? this.flourWeight,
-    totalDoughWeight: totalDoughWeight ?? this.totalDoughWeight,
-    hydration: hydration ?? this.hydration,
-    salt: salt ?? this.salt,
-    yeast: yeast ?? this.yeast,
-    levainPercent: levainPercent ?? this.levainPercent,
-    levainHydration: levainHydration ?? this.levainHydration,
-    prefermentPercent: prefermentPercent ?? this.prefermentPercent,
-    prefermentHydration: prefermentHydration ?? this.prefermentHydration,
-    prefermentYeast: prefermentYeast ?? this.prefermentYeast,
-    enrichment: clearEnrichment ? null : (enrichment ?? this.enrichment),
+    flourWeight: _or(flourWeight, this.flourWeight),
+    totalDoughWeight: _or(totalDoughWeight, this.totalDoughWeight),
+    hydration: _or(hydration, this.hydration),
+    salt: _or(salt, this.salt),
+    yeast: _or(yeast, this.yeast),
+    levainPercent: _or(levainPercent, this.levainPercent),
+    levainHydration: _or(levainHydration, this.levainHydration),
+    prefermentPercent: _or(prefermentPercent, this.prefermentPercent),
+    prefermentHydration: _or(prefermentHydration, this.prefermentHydration),
+    prefermentYeast: _or(prefermentYeast, this.prefermentYeast),
+    enrichment: identical(enrichment, _unset)
+        ? this.enrichment
+        : enrichment as Enrichment?,
     flourBlend: flourBlend ?? this.flourBlend,
     mixIns: mixIns ?? this.mixIns,
     loaves: loaves ?? this.loaves,
@@ -201,8 +223,8 @@ class RecipeInput {
     'style': style.name,
     if (flourWeight != null) 'flourWeight': flourWeight,
     if (totalDoughWeight != null) 'totalDoughWeight': totalDoughWeight,
-    'hydration': hydration,
-    'salt': salt,
+    if (hydration != null) 'hydration': hydration,
+    if (salt != null) 'salt': salt,
     if (yeast != null) 'yeast': yeast,
     if (levainPercent != null) 'levainPercent': levainPercent,
     if (levainHydration != null) 'levainHydration': levainHydration,

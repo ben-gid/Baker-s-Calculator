@@ -30,11 +30,11 @@ class RecipeView extends StatelessWidget {
         for (final group in recipe.groups) ...[
           SectionCard(
             title: group.name,
-            note: group.note,
             trailing: Text(
               formatMass(group.grams, unit),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontFeatures: tabularFigures,
+                fontFamily: numericFont,
               ),
             ),
             children: [
@@ -96,6 +96,7 @@ class _IngredientRow extends StatelessWidget {
                   textAlign: TextAlign.right,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFeatures: tabularFigures,
+                    fontFamily: numericFont,
                   ),
                 ),
               ),
@@ -108,6 +109,7 @@ class _IngredientRow extends StatelessWidget {
                   primary,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontFeatures: tabularFigures,
+                    fontFamily: numericFont,
                   ),
                 ),
                 if (secondary != null)
@@ -115,6 +117,7 @@ class _IngredientRow extends StatelessWidget {
                     secondary,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontFeatures: tabularFigures,
+                      fontFamily: numericFont,
                     ),
                   ),
               ],
@@ -152,12 +155,16 @@ class _TotalsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text('Total dough', style: theme.textTheme.titleMedium),
+                  child: Text(
+                    'Total dough',
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
                 Text(
                   formatMass(recipe.totalWeight, unit),
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontFeatures: tabularFigures,
+                    fontFamily: numericFont,
                   ),
                 ),
               ],
@@ -175,8 +182,10 @@ class _TotalsCard extends StatelessWidget {
                   label: 'Water',
                   value: formatMass(recipe.totalWater, unit),
                 ),
+                // "Total", because it counts the flour and water a levain
+                // carries in and so reads a little above the typed figure.
                 _Stat(
-                  label: 'Hydration',
+                  label: 'Total hydration',
                   value: formatPercent(recipe.hydration),
                 ),
                 if (recipe.loaves > 1)
@@ -205,11 +214,17 @@ class _Stat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label ', style: theme.textTheme.bodySmall),
+        Text(
+          '$label ',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.extension<BakingColors>()!.onProofContainer,
+          ),
+        ),
         Text(
           value,
           style: theme.textTheme.labelMedium?.copyWith(
             fontFeatures: tabularFigures,
+            fontFamily: numericFont,
           ),
         ),
       ],

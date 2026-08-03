@@ -17,8 +17,8 @@ class Ingredient {
   final String name;
   final double grams;
 
-  /// Weight as a percentage of the recipe's total flour. Null for flour itself
-  /// in blends where the percentage is already the baker's own input.
+  /// Weight as a percentage of the flour in the dough, which is 100%. Null only
+  /// when there is no flour to divide by.
   final double? bakersPercent;
 
   /// Set for ingredients counted rather than weighed (eggs). Display shows the
@@ -34,20 +34,16 @@ class Ingredient {
 }
 
 class IngredientGroup {
-  const IngredientGroup({required this.name, required this.ingredients, this.note});
+  const IngredientGroup({required this.name, required this.ingredients});
 
   final String name;
   final List<Ingredient> ingredients;
-
-  /// Optional clarifying line shown under the group heading.
-  final String? note;
 
   double get grams =>
       ingredients.fold(0.0, (sum, ingredient) => sum + ingredient.grams);
 
   IngredientGroup scaled(double factor) => IngredientGroup(
     name: name,
-    note: note,
     ingredients: [for (final i in ingredients) i.scaled(factor)],
   );
 }

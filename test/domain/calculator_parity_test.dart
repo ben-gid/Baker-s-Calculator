@@ -1,9 +1,13 @@
 /// Regression baseline for the baking engine.
 ///
 /// `legacy_goldens.json` was generated from the original label-keyed
-/// calculators before they were replaced, so every number the old app produced
-/// is still asserted here. The engine must reproduce all of them except the two
-/// deliberate corrections in [knownLegacyBugs].
+/// calculators before they were replaced. Classic doughs must still reproduce
+/// every number in it, except the two deliberate corrections in
+/// [knownLegacyBugs].
+///
+/// The inverse styles are exempt — see [rebasedStyles]. They are pinned instead
+/// by the `dough flour is 100%` group below, which asserts the algebra itself
+/// rather than a recorded output, so there is nothing to regenerate.
 ///
 /// Fixture, blend and mix-in names mirror the old UI-generated labels so the
 /// two flat maps can be compared key-for-key.
@@ -47,6 +51,18 @@ const knownLegacyBugs = <String, Map<String, double>>{
   // 2 eggs: 997 - 2 + 100
   'classic/everything': {'Total / Total Dough Weight': 1095.0},
 };
+
+/// Styles whose goldens no longer describe the product, because the *meaning of
+/// their inputs* changed rather than the arithmetic drifting.
+///
+/// The legacy engine measured everything against TOTAL flour, so a levain
+/// carried part of the 100% and the dough's own flour row read 90% or less. The
+/// app now measures against the flour in the dough, which is 100%, and a levain
+/// or preferment is an ingredient weighed against it — the way a written recipe
+/// reads. Every gram in those fixtures moves as a result, so re-recording them
+/// would say nothing; the invariants in `dough flour is 100%` are asserted
+/// instead. The goldens stay in the file as the historical record.
+const rebasedStyles = {'sourdough', 'preferment'};
 
 List<FlourPart> _blend(List<double> percents) => [
   for (var i = 0; i < percents.length; i++)
@@ -157,6 +173,8 @@ void main() {
   });
 
   goldens.forEach((name, golden) {
+    if (rebasedStyles.contains(name.split('/').first)) return;
+
     test('domain parity: $name', () {
       final input = inputs[name]!;
       final actual = toLegacyShape(calculate(input), input.style);
@@ -179,31 +197,22 @@ void main() {
         _classic.copyWith(enrichment: const Enrichment(eggCount: 2)),
       );
       final withoutEggs = calculate(_classic);
-      expect(withEggs.totalWeight - withoutEggs.totalWeight, closeTo(100, 1e-9));
+      expect(
+        withEggs.totalWeight - withoutEggs.totalWeight,
+        closeTo(100, 1e-9),
+      );
     });
 
     test('classic and sourdough agree on what an egg weighs', () {
       double eggDelta(RecipeInput base) =>
-          calculate(base.copyWith(enrichment: const Enrichment(eggCount: 2)))
-              .totalWeight -
+          calculate(
+            base.copyWith(enrichment: const Enrichment(eggCount: 2)),
+          ).totalWeight -
           calculate(base).totalWeight;
       // Sourdough holds total weight fixed, so its delta is 0 by construction;
       // the point is that neither engine path treats a count as grams.
       expect(eggDelta(_classic), closeTo(100, 1e-9));
       expect(eggDelta(_sourdough), closeTo(0, 1e-9));
-    });
-
-    test('blended flours report percentages against total flour', () {
-      final recipe = calculate(_sourdough.copyWith(flourBlend: _blend([80, 20])));
-      final dough = recipe.groups.firstWhere((g) => g.name == 'Dough');
-      final percents = dough.ingredients
-          .where((i) => i.name.startsWith('Flour '))
-          .map((i) => i.bakersPercent!)
-          .toList();
-      // 80/20 of the MAIN flour, which is 90% of total flour once the levain's
-      // share is set aside -> 72% and 18%, and the group says so.
-      expect(percents, [closeTo(72, 1e-6), closeTo(18, 1e-6)]);
-      expect(dough.note, contains('in the levain'));
     });
 
     test('loaves scales every weight but not the percentages', () {
@@ -222,6 +231,85 @@ void main() {
         () => calculate(const RecipeInput(style: DoughStyle.classic)),
         throwsA(isA<MissingFieldError>()),
       );
+    });
+  });
+
+  group('dough flour is 100%', () {
+    /// The flour rows of the group the baker actually mixes.
+    List<Ingredient> doughFlourRows(Recipe recipe, RecipeInput input) {
+      final dough = recipe.groups.firstWhere((g) => g.name == 'Dough');
+      final names = input.flourBlend.isEmpty
+          ? {'Flour'}
+          : input.flourBlend.map((f) => f.name).toSet();
+      return dough.ingredients.where((i) => names.contains(i.name)).toList();
+    }
+
+    for (final entry in {
+      'classic': _classic,
+      'sourdough': _sourdough,
+      'preferment': _preferment,
+    }.entries) {
+      test('${entry.key}: the single flour row is exactly 100%', () {
+        final rows = doughFlourRows(calculate(entry.value), entry.value);
+        expect(rows.single.bakersPercent, closeTo(100, 1e-9));
+      });
+
+      test('${entry.key}: a blend splits that 100% as typed', () {
+        final input = entry.value.copyWith(flourBlend: _blend([65, 25, 10]));
+        final rows = doughFlourRows(calculate(input), input);
+        expect(rows.map((r) => r.bakersPercent), [
+          closeTo(65, 1e-9),
+          closeTo(25, 1e-9),
+          closeTo(10, 1e-9),
+        ]);
+      });
+    }
+
+    test('every percentage is a share of the dough flour, levain included', () {
+      final recipe = calculate(_sourdough);
+      final flour = doughFlourRows(recipe, _sourdough).single.grams;
+      final dough = recipe.groups.firstWhere((g) => g.name == 'Dough');
+      final levain = recipe.groups.firstWhere((g) => g.name == 'Levain');
+
+      double gramsOf(IngredientGroup group, String name) =>
+          group.ingredients.firstWhere((i) => i.name == name).grams;
+
+      // 900 g at 75/2/20 -> 1 + 0.75 + 0.02 + 0.20 = 1.97 shares of flour.
+      expect(flour, closeTo(900 / 1.97, 1e-9));
+      expect(gramsOf(dough, 'Water'), closeTo(flour * 0.75, 1e-9));
+      expect(gramsOf(dough, 'Salt'), closeTo(flour * 0.02, 1e-9));
+      // The levain is weighed out whole, then split by its own hydration.
+      expect(levain.grams, closeTo(flour * 0.20, 1e-9));
+      expect(gramsOf(levain, 'Flour'), closeTo(flour * 0.10, 1e-9));
+      expect(gramsOf(levain, 'Water'), closeTo(flour * 0.10, 1e-9));
+      // ...and the whole thing still weighs what was asked for.
+      expect(recipe.totalWeight, closeTo(900, 1e-9));
+    });
+
+    test('the totals count the flour and water the levain carries in', () {
+      final recipe = calculate(_sourdough);
+      final flour = doughFlourRows(recipe, _sourdough).single.grams;
+
+      expect(recipe.totalFlour, closeTo(flour * 1.10, 1e-9));
+      expect(recipe.totalWater, closeTo(flour * 0.85, 1e-9));
+      // So the true hydration reads above the 75% that was typed.
+      expect(recipe.hydration, closeTo(85 / 110 * 100, 1e-9));
+    });
+
+    test('a preferment carries its own yeast, not the dough denominator', () {
+      final recipe = calculate(_preferment);
+      final flour = doughFlourRows(recipe, _preferment).single.grams;
+      final pre = recipe.groups.firstWhere((g) => g.name == 'Preferment');
+
+      // 900 g at 72/2/30 -> 1 + 0.72 + 0.02 + 0.30 = 2.04.
+      expect(flour, closeTo(900 / 2.04, 1e-9));
+      expect(pre.grams, closeTo(flour * 0.30, 1e-9));
+      // The lump splits 1 : 1.00 : 0.002 between flour, water and yeast.
+      final prefermentFlour = pre.ingredients.first.grams;
+      expect(prefermentFlour, closeTo(flour * 0.30 / 2.002, 1e-9));
+      expect(pre.ingredients[1].grams, closeTo(prefermentFlour, 1e-9));
+      expect(pre.ingredients[2].grams, closeTo(prefermentFlour * 0.002, 1e-9));
+      expect(recipe.totalWeight, closeTo(900, 1e-9));
     });
   });
 }

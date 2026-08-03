@@ -181,7 +181,8 @@ class _RecipeTile extends ConsumerWidget {
 
     final subtitle = [
       recipe.input.style.label,
-      formatPercent(recipe.input.hydration),
+      if (recipe.input.hydration case final hydration?)
+        formatPercent(hydration),
       if (weight != null) formatMass(weight, settings.unit),
       if (recipe.input.loaves > 1) '${recipe.input.loaves} loaves',
     ].join(' · ');
@@ -192,7 +193,9 @@ class _RecipeTile extends ConsumerWidget {
         title: Text(recipe.name, style: theme.textTheme.titleSmall),
         subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
         leading: Icon(
-          recipe.isSystem ? Icons.auto_stories_outlined : Icons.bookmark_outline,
+          recipe.isSystem
+              ? Icons.auto_stories_outlined
+              : Icons.bookmark_outline,
           color: theme.colorScheme.onSurfaceVariant,
         ),
         trailing: recipe.isSystem
@@ -205,8 +208,9 @@ class _RecipeTile extends ConsumerWidget {
                 tooltip: recipe.isFavorite
                     ? 'Remove from favourites'
                     : 'Add to favourites',
-                onPressed: () =>
-                    ref.read(libraryProvider.notifier).toggleFavourite(recipe.id),
+                onPressed: () => ref
+                    .read(libraryProvider.notifier)
+                    .toggleFavourite(recipe.id),
               ),
         onTap: () => context.push('/recipe/${recipe.id}'),
       ),

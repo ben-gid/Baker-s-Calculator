@@ -66,8 +66,12 @@ class CalculatorPage extends ConsumerWidget {
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _Scroll(width: width, child: form)),
-                  Expanded(child: _Scroll(width: width, child: result)),
+                  Expanded(
+                    child: _Scroll(width: width, child: form),
+                  ),
+                  Expanded(
+                    child: _Scroll(width: width, child: result),
+                  ),
                 ],
               )
             : _Scroll(
@@ -117,10 +121,7 @@ class _CalculatorForm extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _StyleSelector(
-          style: input.style,
-          onChanged: controller.setStyle,
-        ),
+        _StyleSelector(style: input.style, onChanged: controller.setStyle),
         const SizedBox(height: Insets.lg),
         _DoughCard(input: input, issues: issues),
         const SizedBox(height: Insets.md),
@@ -204,18 +205,17 @@ class _DoughCard extends ConsumerWidget {
           label: 'Hydration',
           suffix: '%',
           value: input.hydration,
-          helper: 'Water as a percentage of total flour',
+          helper: 'Water as a percentage of the dough flour',
           issue: issues.firstFor(RecipeField.hydration),
-          onChanged: (v) =>
-              controller.change((i) => i.copyWith(hydration: v ?? 0)),
+          onChanged: (v) => controller.change((i) => i.copyWith(hydration: v)),
         ),
         NumberField(
           label: 'Salt',
           suffix: '%',
           value: input.salt,
-          helper: 'Usually 1.8–2.2% of flour',
+          helper: 'Usually 1.8–2.2% of the dough flour',
           issue: issues.firstFor(RecipeField.salt),
-          onChanged: (v) => controller.change((i) => i.copyWith(salt: v ?? 0)),
+          onChanged: (v) => controller.change((i) => i.copyWith(salt: v)),
         ),
         if (input.style == DoughStyle.classic)
           NumberField(
@@ -231,7 +231,7 @@ class _DoughCard extends ConsumerWidget {
             label: 'Levain',
             suffix: '%',
             value: input.levainPercent,
-            helper: 'Levain as a percentage of total flour — typically 20%',
+            helper: 'Levain as a percentage of the dough flour — typically 20%',
             issue: issues.firstFor(RecipeField.levainPercent),
             onChanged: (v) =>
                 controller.change((i) => i.copyWith(levainPercent: v)),
@@ -252,7 +252,7 @@ class _DoughCard extends ConsumerWidget {
             label: 'Preferment',
             suffix: '%',
             value: input.prefermentPercent,
-            helper: 'Preferment as a percentage of total flour',
+            helper: 'Preferment as a percentage of the dough flour',
             issue: issues.firstFor(RecipeField.prefermentPercent),
             onChanged: (v) =>
                 controller.change((i) => i.copyWith(prefermentPercent: v)),
@@ -330,7 +330,7 @@ class _FlourBlendCard extends ConsumerWidget {
     final controller = ref.read(calculatorProvider.notifier);
     final blend = input.flourBlend;
     final issue = issues.firstFor(RecipeField.flourBlend);
-    final total = blend.fold(0.0, (sum, part) => sum + part.percent);
+    final total = blend.fold(0.0, (sum, part) => sum + (part.percent ?? 0));
 
     void setBlend(List<FlourPart> next) =>
         controller.change((i) => i.copyWith(flourBlend: next));
@@ -368,13 +368,14 @@ class _FlourBlendCard extends ConsumerWidget {
                 const SizedBox(width: Insets.sm),
                 Expanded(
                   flex: 2,
-                  child: _InlineNumber(
-                    label: '%',
+                  child: NumberField(
+                    dense: true,
+                    suffix: '%',
                     value: blend[index].percent,
                     onChanged: (percent) => setBlend([
                       for (var i = 0; i < blend.length; i++)
                         i == index
-                            ? blend[i].copyWith(percent: percent ?? 0)
+                            ? blend[i].copyWith(percent: percent)
                             : blend[i],
                     ]),
                   ),
@@ -445,9 +446,7 @@ class _EnrichmentCard extends ConsumerWidget {
     };
 
     void set(Enrichment next) => controller.change(
-      (i) => next.isEmpty
-          ? i.copyWith(clearEnrichment: true)
-          : i.copyWith(enrichment: next),
+      (i) => i.copyWith(enrichment: next.isEmpty ? null : next),
     );
 
     return CollapsibleCard(
@@ -464,29 +463,20 @@ class _EnrichmentCard extends ConsumerWidget {
               FilterChip(
                 label: const Text('Fat'),
                 selected: active.contains('fat'),
-                onSelected: (on) => set(
-                  on
-                      ? enrichment.copyWith(fatPercent: 8)
-                      : enrichment.copyWith(clearFat: true),
-                ),
+                onSelected: (on) =>
+                    set(enrichment.copyWith(fatPercent: on ? 8 : null)),
               ),
               FilterChip(
                 label: const Text('Sugar'),
                 selected: active.contains('sugar'),
-                onSelected: (on) => set(
-                  on
-                      ? enrichment.copyWith(sugarPercent: 6)
-                      : enrichment.copyWith(clearSugar: true),
-                ),
+                onSelected: (on) =>
+                    set(enrichment.copyWith(sugarPercent: on ? 6 : null)),
               ),
               FilterChip(
                 label: const Text('Eggs'),
                 selected: active.contains('eggs'),
-                onSelected: (on) => set(
-                  on
-                      ? enrichment.copyWith(eggCount: 1)
-                      : enrichment.copyWith(clearEggs: true),
-                ),
+                onSelected: (on) =>
+                    set(enrichment.copyWith(eggCount: on ? 1 : null)),
               ),
             ],
           ),
@@ -561,13 +551,14 @@ class _MixInsCard extends ConsumerWidget {
                 const SizedBox(width: Insets.sm),
                 Expanded(
                   flex: 2,
-                  child: _InlineNumber(
-                    label: '%',
+                  child: NumberField(
+                    dense: true,
+                    suffix: '%',
                     value: mixIns[index].percent,
                     onChanged: (percent) => setMixIns([
                       for (var i = 0; i < mixIns.length; i++)
                         i == index
-                            ? mixIns[i].copyWith(percent: percent ?? 0)
+                            ? mixIns[i].copyWith(percent: percent)
                             : mixIns[i],
                     ]),
                   ),
@@ -657,6 +648,7 @@ class _BatchCard extends ConsumerWidget {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontFeatures: tabularFigures,
+                  fontFamily: numericFont,
                 ),
               ),
             ),
@@ -671,33 +663,6 @@ class _BatchCard extends ConsumerWidget {
       ],
     );
   }
-}
-
-/// Compact numeric input for use inside a row, where a full [NumberField]
-/// with helper text would not fit.
-class _InlineNumber extends StatelessWidget {
-  const _InlineNumber({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final ValueChanged<double?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-    initialValue: value == value.roundToDouble()
-        ? value.round().toString()
-        : value.toString(),
-    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    style: Theme.of(
-      context,
-    ).textTheme.bodyLarge?.copyWith(fontFeatures: tabularFigures),
-    decoration: InputDecoration(suffixText: label, isDense: true),
-    onChanged: (raw) => onChanged(parseNumber(raw)),
-  );
 }
 
 /// Shown in place of the recipe when the input cannot be calculated. Lists the

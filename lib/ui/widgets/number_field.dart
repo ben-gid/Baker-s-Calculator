@@ -11,22 +11,29 @@ import '../../domain/validation.dart';
 ///
 /// The controller is only rewritten when the incoming [value] differs from what
 /// is already typed, otherwise the caret jumps to the end while the baker is
-/// mid-number.
+/// mid-number. An empty box therefore has to reach state as null: if state
+/// coerced it to a number, this would immediately type that number back in and
+/// the field could never be cleared.
 class NumberField extends StatefulWidget {
   const NumberField({
     super.key,
-    required this.label,
+    this.label,
     required this.value,
     required this.onChanged,
     this.suffix,
     this.helper,
     this.issue,
     this.autofocus = false,
+    this.dense = false,
   });
 
-  final String label;
+  final String? label;
   final double? value;
   final ValueChanged<double?> onChanged;
+
+  /// Strips the label, helper slot and bottom margin so the field fits inside a
+  /// row next to another control.
+  final bool dense;
 
   /// `%`, `g`, `°C` — shown inside the field, not in the label.
   final String? suffix;
@@ -73,7 +80,7 @@ class _NumberFieldState extends State<NumberField> {
     final isWarning = issue?.severity == IssueSeverity.warning;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.md),
+      padding: EdgeInsets.only(bottom: widget.dense ? 0 : Insets.md),
       child: TextField(
         controller: _controller,
         autofocus: widget.autofocus,
@@ -84,11 +91,13 @@ class _NumberFieldState extends State<NumberField> {
         ],
         style: theme.textTheme.bodyLarge?.copyWith(
           fontFeatures: tabularFigures,
+          fontFamily: numericFont,
         ),
         onChanged: (raw) => widget.onChanged(parseNumber(raw)),
         decoration: InputDecoration(
           labelText: widget.label,
           suffixText: widget.suffix,
+          isDense: widget.dense,
           helperText: issue == null ? widget.helper : null,
           // Warnings are advisory, so they use the field's helper slot tinted
           // amber rather than the error slot, which would imply it is blocked.

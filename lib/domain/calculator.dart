@@ -1,12 +1,21 @@
 /// The baking engine. Pure Dart — no Flutter, no globals, no I/O.
 ///
-/// The algebra is ported verbatim from the original `quick_calculate_recipe.dart`
-/// and pinned by `test/domain/legacy_parity_test.dart`. Two things changed
-/// deliberately, both documented in that test's `knownLegacyBugs`:
+/// **The flour in the dough is 100%.** Every percentage the baker types —
+/// hydration, salt, levain, preferment, fat, sugar, mix-ins — is a share of the
+/// flour weighed into the mixing bowl, and a levain or preferment is just
+/// another ingredient measured against it. That is how a written recipe reads
+/// ("500 g flour, 375 g water, 100 g starter"), and it means the flour row says
+/// 100% whether or not there is a preferment.
 ///
-///  * eggs contribute their WEIGHT to the total, not their count;
-///  * a flour blend's percentages are reported against total flour, and the
-///    group says so, instead of being silently main-dough-only.
+/// The flour and water a levain carries in are still counted in
+/// [Recipe.totalFlour], [Recipe.totalWater] and [Recipe.hydration], so the
+/// totals card shows the dough's true hydration, which sits a little above the
+/// figure typed in.
+///
+/// Classic is *forward*: flour weight is given. The other two are *inverse*:
+/// finished dough weight is given, so flour is solved by dividing by the
+/// baker's-percentage denominator. Eggs are a count, not a percentage, so their
+/// weight comes off before the division.
 library;
 
 import 'models/dough_style.dart';
@@ -39,209 +48,211 @@ Recipe calculate(RecipeInput input) {
 // ---------------------------------------------------------------------------
 
 Recipe _classic(RecipeInput input) {
-  final flourTotal = _require(input.flourWeight, 'flourWeight');
-  final water = flourTotal * input.hydration / 100;
+  final doughFlour = _require(input.flourWeight, 'flourWeight');
+  final hydration = _require(input.hydration, 'hydration');
+  final salt = _require(input.salt, 'salt');
+  final water = doughFlour * hydration / 100;
 
   final dough = <Ingredient>[
-    ..._flourRows(input, flourTotal, flourTotal),
-    _pct('Water', water, flourTotal),
-    _pct('Yeast', flourTotal * _require(input.yeast, 'yeast') / 100, flourTotal),
-    _pct('Salt', flourTotal * input.salt / 100, flourTotal),
-    ..._enrichmentRows(input, flourTotal),
-    ..._mixInRows(input, flourTotal),
+    ..._flourRows(input, doughFlour),
+    _pct('Water', water, doughFlour),
+    _pct(
+      'Yeast',
+      doughFlour * _require(input.yeast, 'yeast') / 100,
+      doughFlour,
+    ),
+    _pct('Salt', doughFlour * salt / 100, doughFlour),
+    ..._enrichmentRows(input, doughFlour),
+    ..._mixInRows(input, doughFlour),
   ];
 
   return _assemble(
     groups: [IngredientGroup(name: 'Dough', ingredients: dough)],
     input: input,
-    totalFlour: flourTotal,
+    totalFlour: doughFlour,
     totalWater: water,
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sourdough / preferment: inverse. Finished dough weight is given, so flour is
-// solved by dividing by the baker's-percentage denominator. Eggs are counted
-// in grams and removed BEFORE the division, because they are not a percentage
-// of flour.
+// Sourdough / preferment: inverse. The dough weighs
+//
+//   doughFlour * (1 + hydration + salt + levain + fat + sugar) + eggs
+//
+// with every term a fraction of the dough's flour, so the flour is that weight
+// less the eggs, divided by the bracket. The levain enters whole — flour, water
+// and yeast together — because it is weighed out as one lump.
 // ---------------------------------------------------------------------------
 
 Recipe _sourdough(RecipeInput input) {
   final doughWeight = _require(input.totalDoughWeight, 'totalDoughWeight');
   final levainPercent = _require(input.levainPercent, 'levainPercent');
   final levainHydration = _require(input.levainHydration, 'levainHydration');
+  final hydration = _require(input.hydration, 'hydration');
+  final salt = _require(input.salt, 'salt');
   final enrichment = input.enrichmentOrEmpty;
 
-  final denominator =
-      1 +
-      input.hydration / 100 +
-      input.salt / 100 +
-      (enrichment.fatPercent ?? 0) / 100 +
-      (enrichment.sugarPercent ?? 0) / 100;
+  final doughFlour =
+      (doughWeight - enrichment.eggGrams) /
+      _denominator(input, hydration, salt, levainPercent);
+  final water = doughFlour * hydration / 100;
 
-  final flourTotal = (doughWeight - enrichment.eggGrams) / denominator;
-  final waterTotal = flourTotal * input.hydration / 100;
-
-  final levainTotal = flourTotal * levainPercent / 100;
+  final levainTotal = doughFlour * levainPercent / 100;
   final levainFlour = levainTotal / (1 + levainHydration / 100);
   final levainWater = levainTotal - levainFlour;
-
-  final mainFlour = flourTotal - levainFlour;
-  final mainWater = waterTotal - levainWater;
 
   return _assemble(
     groups: [
       IngredientGroup(
         name: 'Levain',
         ingredients: [
-          _pct('Flour', levainFlour, flourTotal),
-          _pct('Water', levainWater, flourTotal),
+          _pct('Flour', levainFlour, doughFlour),
+          _pct('Water', levainWater, doughFlour),
         ],
       ),
       IngredientGroup(
         name: 'Dough',
-        note: _blendNote(input, levainFlour, 'levain'),
         ingredients: [
-          ..._flourRows(input, mainFlour, flourTotal),
-          _pct('Water', mainWater, flourTotal),
-          _pct('Salt', flourTotal * input.salt / 100, flourTotal),
-          ..._enrichmentRows(input, flourTotal),
-          ..._mixInRows(input, flourTotal),
+          ..._flourRows(input, doughFlour),
+          _pct('Water', water, doughFlour),
+          _pct('Salt', doughFlour * salt / 100, doughFlour),
+          ..._enrichmentRows(input, doughFlour),
+          ..._mixInRows(input, doughFlour),
         ],
       ),
     ],
     input: input,
-    totalFlour: flourTotal,
-    totalWater: waterTotal,
+    totalFlour: doughFlour + levainFlour,
+    totalWater: water + levainWater,
   );
 }
 
 Recipe _preferment(RecipeInput input) {
   final doughWeight = _require(input.totalDoughWeight, 'totalDoughWeight');
-  final prefermentPercent =
-      _require(input.prefermentPercent, 'prefermentPercent');
-  final prefermentHydration =
-      _require(input.prefermentHydration, 'prefermentHydration');
+  final prefermentPercent = _require(
+    input.prefermentPercent,
+    'prefermentPercent',
+  );
+  final prefermentHydration = _require(
+    input.prefermentHydration,
+    'prefermentHydration',
+  );
   final prefermentYeast = _require(input.prefermentYeast, 'prefermentYeast');
+  final hydration = _require(input.hydration, 'hydration');
+  final salt = _require(input.salt, 'salt');
   final enrichment = input.enrichmentOrEmpty;
 
-  // The yeast living inside the preferment is a percentage of the preferment's
-  // flour, so it has to be re-expressed against TOTAL flour before it can join
-  // the denominator: preferment share -> its flour share -> its yeast share.
-  final prefermentYeastOfTotalFlour =
-      prefermentPercent /
-      100 /
-      (1 + prefermentYeast / 100 + prefermentHydration / 100) *
-      prefermentYeast /
-      100;
+  final doughFlour =
+      (doughWeight - enrichment.eggGrams) /
+      _denominator(input, hydration, salt, prefermentPercent);
+  final water = doughFlour * hydration / 100;
 
-  final denominator =
-      1 +
-      input.hydration / 100 +
-      input.salt / 100 +
-      prefermentYeastOfTotalFlour +
-      (enrichment.fatPercent ?? 0) / 100 +
-      (enrichment.sugarPercent ?? 0) / 100;
-
-  final flourTotal = (doughWeight - enrichment.eggGrams) / denominator;
-  final waterTotal = flourTotal * input.hydration / 100;
-
-  final prefermentTotal = flourTotal * prefermentPercent / 100;
+  // The preferment's own hydration and yeast are shares of ITS flour, so the
+  // lump splits three ways in the ratio 1 : hydration : yeast.
+  final prefermentTotal = doughFlour * prefermentPercent / 100;
   final prefermentFlour =
-      prefermentTotal /
-      (1 + prefermentHydration / 100 + prefermentYeast / 100);
+      prefermentTotal / (1 + prefermentHydration / 100 + prefermentYeast / 100);
   final prefermentWater = prefermentFlour * prefermentHydration / 100;
   final prefermentYeastWeight = prefermentFlour * prefermentYeast / 100;
-
-  final mainFlour = flourTotal - prefermentFlour;
-  final mainWater = waterTotal - prefermentWater;
 
   return _assemble(
     groups: [
       IngredientGroup(
         name: 'Preferment',
         ingredients: [
-          _pct('Flour', prefermentFlour, flourTotal),
-          _pct('Water', prefermentWater, flourTotal),
-          _pct('Yeast', prefermentYeastWeight, flourTotal),
+          _pct('Flour', prefermentFlour, doughFlour),
+          _pct('Water', prefermentWater, doughFlour),
+          _pct('Yeast', prefermentYeastWeight, doughFlour),
         ],
       ),
       IngredientGroup(
         name: 'Dough',
-        note: _blendNote(input, prefermentFlour, 'preferment'),
         ingredients: [
-          ..._flourRows(input, mainFlour, flourTotal),
-          _pct('Water', mainWater, flourTotal),
-          _pct('Salt', flourTotal * input.salt / 100, flourTotal),
-          ..._enrichmentRows(input, flourTotal),
-          ..._mixInRows(input, flourTotal),
+          ..._flourRows(input, doughFlour),
+          _pct('Water', water, doughFlour),
+          _pct('Salt', doughFlour * salt / 100, doughFlour),
+          ..._enrichmentRows(input, doughFlour),
+          ..._mixInRows(input, doughFlour),
         ],
       ),
     ],
     input: input,
-    totalFlour: flourTotal,
-    totalWater: waterTotal,
+    totalFlour: doughFlour + prefermentFlour,
+    totalWater: water + prefermentWater,
   );
+}
+
+/// Everything the dough weighs, per gram of dough flour. Mix-ins are left out
+/// on purpose: "total dough weight" is the dough, and seeds or olives are added
+/// on top of it.
+double _denominator(
+  RecipeInput input,
+  double hydration,
+  double salt,
+  double leavenPercent,
+) {
+  final enrichment = input.enrichmentOrEmpty;
+  return 1 +
+      hydration / 100 +
+      salt / 100 +
+      leavenPercent / 100 +
+      (enrichment.fatPercent ?? 0) / 100 +
+      (enrichment.sugarPercent ?? 0) / 100;
 }
 
 // ---------------------------------------------------------------------------
 // Shared row builders
 // ---------------------------------------------------------------------------
 
-Ingredient _pct(String name, double grams, double totalFlour) => Ingredient(
+Ingredient _pct(String name, double grams, double doughFlour) => Ingredient(
   name: name,
   grams: grams,
-  bakersPercent: totalFlour == 0 ? null : grams / totalFlour * 100,
+  bakersPercent: doughFlour == 0 ? null : grams / doughFlour * 100,
 );
 
-/// Splits [flourHere] across the blend, or emits a single "Flour" row when the
-/// baker did not specify a blend. Percentages are always reported against
-/// [totalFlour] so every number on screen shares one denominator.
-List<Ingredient> _flourRows(
-  RecipeInput input,
-  double flourHere,
-  double totalFlour,
-) {
+/// Splits [doughFlour] across the blend, or emits a single "Flour" row when the
+/// baker did not specify one. Either way the rows add up to 100%.
+List<Ingredient> _flourRows(RecipeInput input, double doughFlour) {
   if (input.flourBlend.isEmpty) {
-    return [_pct('Flour', flourHere, totalFlour)];
+    return [_pct('Flour', doughFlour, doughFlour)];
   }
   return [
     for (final part in input.flourBlend)
-      _pct(part.name, flourHere * part.percent / 100, totalFlour),
+      _pct(
+        part.name,
+        doughFlour * _require(part.percent, 'flourBlend.percent') / 100,
+        doughFlour,
+      ),
   ];
 }
 
-/// Explains that the flour percentages shown exclude the flour already used in
-/// the levain/preferment — the original UI showed neither the note nor the
-/// percentages, which made blended recipes impossible to read.
-String? _blendNote(RecipeInput input, double flourElsewhere, String where) {
-  if (input.flourBlend.isEmpty) return null;
-  return 'Blend applies to the dough flour. '
-      '${flourElsewhere.toStringAsFixed(0)} g of flour is in the $where above.';
-}
-
-List<Ingredient> _enrichmentRows(RecipeInput input, double totalFlour) {
+List<Ingredient> _enrichmentRows(RecipeInput input, double doughFlour) {
   final enrichment = input.enrichment;
   if (enrichment == null || enrichment.isEmpty) return const [];
   return [
     if (enrichment.fatPercent != null)
-      _pct('Fat', totalFlour * enrichment.fatPercent! / 100, totalFlour),
+      _pct('Fat', doughFlour * enrichment.fatPercent! / 100, doughFlour),
     if (enrichment.sugarPercent != null)
-      _pct('Sugar', totalFlour * enrichment.sugarPercent! / 100, totalFlour),
+      _pct('Sugar', doughFlour * enrichment.sugarPercent! / 100, doughFlour),
     if (enrichment.eggCount != null)
       Ingredient(
         name: 'Eggs',
         grams: enrichment.eggGrams,
-        bakersPercent:
-            totalFlour == 0 ? null : enrichment.eggGrams / totalFlour * 100,
+        bakersPercent: doughFlour == 0
+            ? null
+            : enrichment.eggGrams / doughFlour * 100,
         count: enrichment.eggCount,
       ),
   ];
 }
 
-List<Ingredient> _mixInRows(RecipeInput input, double totalFlour) => [
+List<Ingredient> _mixInRows(RecipeInput input, double doughFlour) => [
   for (final mixIn in input.mixIns)
-    _pct(mixIn.name, totalFlour * mixIn.percent / 100, totalFlour),
+    _pct(
+      mixIn.name,
+      doughFlour * _require(mixIn.percent, 'mixIns.percent') / 100,
+      doughFlour,
+    ),
 ];
 
 Recipe _assemble({

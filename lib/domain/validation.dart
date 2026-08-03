@@ -70,10 +70,17 @@ extension IssueList on List<InputIssue> {
 List<InputIssue> validate(RecipeInput input) {
   final issues = <InputIssue>[];
 
-  void required(double? value, RecipeField field, String label) {
+  /// An empty box is an error, not a zero — the baker is allowed to clear a
+  /// field, they just get no recipe until they refill it.
+  void present(double? value, RecipeField field, String label) {
     if (value == null) {
       issues.add(InputIssue.error(field, '$label is required'));
-    } else if (value <= 0) {
+    }
+  }
+
+  void required(double? value, RecipeField field, String label) {
+    present(value, field, label);
+    if (value != null && value <= 0) {
       issues.add(InputIssue.error(field, '$label must be greater than zero'));
     }
   }
@@ -193,6 +200,8 @@ List<InputIssue> validate(RecipeInput input) {
   final enrichmentLiquid =
       (input.enrichmentOrEmpty.fatPercent ?? 0) +
       (input.enrichmentOrEmpty.eggCount ?? 0) * 7;
+  present(input.hydration, RecipeField.hydration, 'Hydration');
+  present(input.salt, RecipeField.salt, 'Salt');
   range(
     input.hydration,
     RecipeField.hydration,
@@ -201,7 +210,7 @@ List<InputIssue> validate(RecipeInput input) {
     label: 'Hydration',
     warnBelow: enrichmentLiquid >= 15 ? 0 : 50,
     warnAbove: 95,
-    warning: input.hydration > 95
+    warning: (input.hydration ?? 0) > 95
         ? 'Very slack dough — hard to shape by hand'
         : 'Very stiff dough — this will be hard to mix',
   );
@@ -213,7 +222,7 @@ List<InputIssue> validate(RecipeInput input) {
     label: 'Salt',
     warnBelow: 1.4,
     warnAbove: 2.8,
-    warning: input.salt > 2.8
+    warning: (input.salt ?? 0) > 2.8
         ? 'Over 2.8% salt slows fermentation noticeably'
         : 'Under 1.4% salt tastes flat and slackens the dough',
   );
@@ -237,7 +246,10 @@ List<InputIssue> validate(RecipeInput input) {
     final eggs = enrichment.eggCount;
     if (eggs != null && (eggs < 0 || eggs > 24)) {
       issues.add(
-        const InputIssue.error(RecipeField.eggs, 'Eggs must be between 0 and 24'),
+        const InputIssue.error(
+          RecipeField.eggs,
+          'Eggs must be between 0 and 24',
+        ),
       );
     }
   }
@@ -248,7 +260,14 @@ List<InputIssue> validate(RecipeInput input) {
         const InputIssue.error(RecipeField.flourBlend, 'Name every flour'),
       );
     }
-    if (input.flourBlend.any((part) => part.percent < 0)) {
+    if (input.flourBlend.any((part) => part.percent == null)) {
+      issues.add(
+        const InputIssue.error(
+          RecipeField.flourBlend,
+          'Give every flour a percentage',
+        ),
+      );
+    } else if (input.flourBlend.any((part) => part.percent! < 0)) {
       issues.add(
         const InputIssue.error(
           RecipeField.flourBlend,
@@ -256,7 +275,7 @@ List<InputIssue> validate(RecipeInput input) {
         ),
       );
     } else {
-      final total = input.flourBlend.fold(0.0, (sum, p) => sum + p.percent);
+      final total = input.flourBlend.fold(0.0, (sum, p) => sum + p.percent!);
       if ((total - 100).abs() > 0.01) {
         issues.add(
           InputIssue.error(
@@ -268,7 +287,14 @@ List<InputIssue> validate(RecipeInput input) {
     }
   }
 
-  if (input.mixIns.any((m) => m.percent < 0)) {
+  if (input.mixIns.any((m) => m.percent == null)) {
+    issues.add(
+      const InputIssue.error(
+        RecipeField.mixIns,
+        'Give every mix-in a percentage',
+      ),
+    );
+  } else if (input.mixIns.any((m) => m.percent! < 0)) {
     issues.add(
       const InputIssue.error(
         RecipeField.mixIns,

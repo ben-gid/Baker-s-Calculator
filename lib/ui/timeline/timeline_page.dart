@@ -83,9 +83,8 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
               finish: steps.last.endsAt,
               total: timeline.total,
               onStartChanged: (value) => setState(() => _start = value),
-              onFinishChanged: (value) => setState(
-                () => _start = timeline.startForFinish(value),
-              ),
+              onFinishChanged: (value) =>
+                  setState(() => _start = timeline.startForFinish(value)),
             ),
             const SizedBox(height: Insets.md),
             for (var i = 0; i < steps.length; i++)
@@ -150,11 +149,7 @@ class _StartCard extends StatelessWidget {
       title: 'Timing',
       note: 'Total ${formatDuration(total)} from first mix to out of the oven.',
       children: [
-        _TimeRow(
-          label: 'Start',
-          value: start,
-          onChanged: onStartChanged,
-        ),
+        _TimeRow(label: 'Start', value: start, onChanged: onStartChanged),
         const Divider(height: Insets.xl),
         _TimeRow(
           label: 'Out of the oven',
@@ -219,10 +214,14 @@ class _TimeRow extends StatelessWidget {
               '${_dayLabel(value)} ${formatClock(value)}',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontFeatures: tabularFigures,
+                fontFamily: numericFont,
               ),
             ),
             const SizedBox(width: Insets.sm),
-            Icon(Icons.edit_calendar_outlined, color: theme.colorScheme.primary),
+            Icon(
+              Icons.edit_calendar_outlined,
+              color: theme.colorScheme.primary,
+            ),
           ],
         ),
       ),
@@ -245,15 +244,7 @@ String _dayLabel(DateTime value) {
       value.day == tomorrow.day;
   if (isTomorrow) return 'tomorrow';
 
-  const names = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
+  const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return names[value.weekday - 1];
 }
 
@@ -306,6 +297,7 @@ class _StepTile extends StatelessWidget {
                   formatClock(scheduled.startsAt),
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontFeatures: tabularFigures,
+                    fontFamily: numericFont,
                   ),
                 ),
                 Expanded(
@@ -355,6 +347,7 @@ class _StepTile extends StatelessWidget {
                               formatDuration(step.duration),
                               style: theme.textTheme.labelMedium?.copyWith(
                                 fontFeatures: tabularFigures,
+                                fontFamily: numericFont,
                               ),
                             ),
                           ],

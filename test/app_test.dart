@@ -180,6 +180,25 @@ void main() {
     expect(find.textContaining('greater than zero'), findsWidgets);
   });
 
+  testWidgets('a field can be emptied and retyped', (tester) async {
+    await boot(tester);
+    final field = find.widgetWithText(TextField, 'Total dough weight');
+
+    await tester.enterText(field, '');
+    await tester.pumpAndSettle();
+
+    // The box stays empty instead of typing the old value back in — otherwise
+    // 900 -> 1000 means backspacing to "9", typing "1000", and deleting the 9.
+    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    expect(find.text('Total dough'), findsNothing);
+    expect(find.textContaining('Dough weight is required'), findsWidgets);
+
+    await tester.enterText(field, '1000');
+    await tester.pumpAndSettle();
+
+    expect(find.text('1000 g'), findsOneWidget);
+  });
+
   testWidgets('an unusual but workable value warns without blocking', (
     tester,
   ) async {
@@ -311,7 +330,10 @@ void main() {
     await tester.tap(find.byTooltip('Open in calculator'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Total dough weight'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Total dough weight'),
+      findsOneWidget,
+    );
     // The built-in is a 90/10 blend, so the calculator should show both flours.
     expect(find.text('Bread flour'), findsWidgets);
   });
@@ -345,7 +367,9 @@ void main() {
 
     await tester.tap(find.text('Country Sourdough'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Plan this bake'));
+    await tester.tap(
+      find.widgetWithText(FloatingActionButton, 'Plan this bake'),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Timing'), findsOneWidget);
@@ -372,7 +396,9 @@ void main() {
     await openRecipesTab(tester);
     await tester.tap(find.text('Country Sourdough'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Plan this bake'));
+    await tester.tap(
+      find.widgetWithText(FloatingActionButton, 'Plan this bake'),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FloatingActionButton, 'Start bake'));
     await tester.pumpAndSettle();

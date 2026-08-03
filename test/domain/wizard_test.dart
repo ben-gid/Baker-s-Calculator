@@ -68,7 +68,7 @@ void main() {
   test('flour blends always add up to 100%', () {
     for (final flour in FlourChoice.values) {
       if (flour.blend.isEmpty) continue;
-      final total = flour.blend.fold(0.0, (sum, part) => sum + part.percent);
+      final total = flour.blend.fold(0.0, (sum, part) => sum + part.percent!);
       expect(total, 100, reason: flour.name);
     }
   });
@@ -81,7 +81,7 @@ void main() {
       const WizardChoices(character: BreadCharacter.enriched),
     );
 
-    expect(hearth.hydration, greaterThan(rich.hydration));
+    expect(hearth.hydration, greaterThan(rich.hydration!));
     expect(hearth.enrichment, isNull);
     expect(rich.enrichment!.fatPercent, greaterThan(0));
     expect(rich.enrichment!.eggCount, greaterThan(0));
@@ -113,8 +113,14 @@ void main() {
       const WizardChoices(addIns: {AddIn.walnuts, AddIn.seeds}),
     );
 
-    expect(input.mixIns.map((m) => m.name), containsAll(['Walnuts', 'Mixed seeds']));
-    expect(input.mixIns.every((m) => m.percent > 0 && m.percent <= 30), isTrue);
+    expect(
+      input.mixIns.map((m) => m.name),
+      containsAll(['Walnuts', 'Mixed seeds']),
+    );
+    expect(
+      input.mixIns.every((m) => m.percent! > 0 && m.percent! <= 30),
+      isTrue,
+    );
   });
 
   test('the suggested name reads like something a person would write', () {
@@ -150,7 +156,10 @@ void main() {
     expect(input.loaves, 3);
     expect(
       calculate(input).totalWeight,
-      closeTo(calculate(composeRecipe(const WizardChoices())).totalWeight * 3, 1e-6),
+      closeTo(
+        calculate(composeRecipe(const WizardChoices())).totalWeight * 3,
+        1e-6,
+      ),
     );
   });
 }

@@ -86,10 +86,20 @@ flutter:
     - assets/recipes/
 
   fonts:
-    # Variable fonts: one file covers every weight. Weights are selected at
-    # runtime with FontVariation in core/theme/app_theme.dart, not here.
-    - family: PlusJakartaSans
+    # UI text. Variable font: one file covers every weight, selected at runtime
+    # with FontVariation in core/theme/app_theme.dart, not here.
+    - family: IBMPlexSans
       fonts:
-        - asset: "assets/fonts/PlusJakartaSans[wght].ttf"
-        - asset: "assets/fonts/PlusJakartaSans-Italic[wght].ttf"
-          style: italic
+        - asset: "assets/fonts/IBMPlexSans[wdth,wght].ttf"
+    # Every gram and percentage. Static weights — Plex Mono has no variable
+    # cut, so the weights the text theme actually uses are listed one by one.
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700

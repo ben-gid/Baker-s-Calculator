@@ -1,51 +1,68 @@
-/// Warm artisan palette: terracotta on cream, sage for "ready" states.
+/// Instrument palette: near-black ink on cool paper, emerald as the one accent.
+/// The app is a measuring tool, so it is dressed as one — the only saturated
+/// colours are the emerald and the two that warn (`warn` amber, `error` red).
+///
+/// The signature is `0xFF34D399`, used literally as the dark-mode accent. Light
+/// mode uses `0xFF047857` from the same family instead, because `34D399`
+/// measures 1.8:1 on paper — it cannot carry text or a filled button there. It
+/// was also tried as the light-mode `proofContainer` fill, where it reads
+/// beautifully under the big total, but a saturated block cannot host the
+/// muted labels and amber warnings that also land on that container, so the
+/// container stays a tint.
+///
+/// `primary` and [BakingColors.proof] are deliberately the same emerald — the
+/// dough being ready *is* the brand, so "ready" and "accent" are one colour.
+/// They stay separate names so a future change can split them again.
 ///
 /// Every colour in the app comes from `Theme.of(context).colorScheme` or the
 /// [BakingColors] extension below — no widget hardcodes a hex value. Contrast
 /// ratios in the comments are measured against the surface of that mode and are
-/// all at or above WCAG AA for their use.
+/// all at or above WCAG AA for their use; `test/theme_contrast_test.dart`
+/// re-measures every one of them.
 library;
 
 import 'package:flutter/material.dart';
 
 import 'spacing.dart';
 
-const _seed = Color(0xFF9A3412); // terracotta
+const _seed = Color(0xFF059669); // emerald — derives the cool green neutrals
 
 abstract final class _Light {
-  static const surface = Color(0xFFFFFBEB); // warm cream
+  static const surface = Color(0xFFFAFAFA); // cool paper
   static const surfaceContainer = Color(0xFFFFFFFF);
-  static const surfaceContainerHigh = Color(0xFFFDF4E3);
-  static const onSurface = Color(0xFF0F172A); // 16.0:1
-  static const onSurfaceVariant = Color(0xFF57534E); // 7.4:1
-  static const primary = Color(0xFF9A3412); // 7.0:1
-  static const onPrimary = Color(0xFFFFFFFF); // 7.3:1 on primary
-  static const primaryContainer = Color(0xFFFFE0D2);
-  static const onPrimaryContainer = Color(0xFF5C1A06);
-  static const outline = Color(0xFFD6C9B8);
-  static const outlineVariant = Color(0xFFEADFCE);
-  static const error = Color(0xFFB3261E);
-  static const proof = Color(0xFF047857); // 5.4:1 — safe for text
-  static const proofContainer = Color(0xFFD9F2E6);
-  static const warn = Color(0xFF9A6400); // 4.8:1
+  static const surfaceContainerHigh = Color(0xFFF4F4F5);
+  static const onSurface = Color(0xFF09090B); // 19.1:1
+  static const onSurfaceVariant = Color(0xFF52525B); // 7.4:1
+  static const primary = Color(0xFF047857); // deep emerald — 5.3:1
+  static const onPrimary = Color(0xFFFFFFFF); // 5.5:1 on primary
+  static const primaryContainer = Color(0xFFA7F3D0);
+  static const onPrimaryContainer = Color(0xFF064E3B); // 7.6:1
+  static const outline = Color(0xFF8A8A93); // 3.3:1 — interactive boundary
+  static const outlineVariant = Color(0xFFE4E4E7); // decorative only
+  static const error = Color(0xFFB91C1C); // 6.2:1
+  static const proof = Color(0xFF047857); // the accent itself — see below
+  static const proofContainer = Color(0xFFD1FAE5);
+  static const onProofContainer = Color(0xFF064E3B); // 8.6:1
+  static const warn = Color(0xFF916000); // 5.2:1, and 4.8:1 on proofContainer
 }
 
 abstract final class _Dark {
-  static const surface = Color(0xFF1A1614); // warm charcoal, not neutral grey
-  static const surfaceContainer = Color(0xFF241E1B);
-  static const surfaceContainerHigh = Color(0xFF2E2724);
-  static const onSurface = Color(0xFFF5EFE9); // 15.1:1
-  static const onSurfaceVariant = Color(0xFFC4B7AC); // 8.2:1
-  static const primary = Color(0xFFFFB59A); // 10.6:1
-  static const onPrimary = Color(0xFF5C1A06);
-  static const primaryContainer = Color(0xFF7A2A0E);
-  static const onPrimaryContainer = Color(0xFFFFE0D2);
-  static const outline = Color(0xFF544A44);
-  static const outlineVariant = Color(0xFF3A322E);
-  static const error = Color(0xFFF2B8B5);
-  static const proof = Color(0xFF34D399); // 9.4:1
-  static const proofContainer = Color(0xFF11493A);
-  static const warn = Color(0xFFE8B84B);
+  static const surface = Color(0xFF09090B); // near-black, neutral
+  static const surfaceContainer = Color(0xFF18181B);
+  static const surfaceContainerHigh = Color(0xFF27272A);
+  static const onSurface = Color(0xFFFAFAFA); // 19.1:1
+  static const onSurfaceVariant = Color(0xFFA1A1AA); // 7.8:1
+  static const primary = Color(0xFF34D399); // the signature — 10.4:1
+  static const onPrimary = Color(0xFF09090B); // 10.4:1 on primary
+  static const primaryContainer = Color(0xFF064E3B);
+  static const onPrimaryContainer = Color(0xFFA7F3D0); // 7.6:1
+  static const outline = Color(0xFF71717A); // 4.1:1 — interactive boundary
+  static const outlineVariant = Color(0xFF27272A); // decorative only
+  static const error = Color(0xFFFCA5A5); // 10.5:1
+  static const proof = Color(0xFF34D399); // the accent itself — see below
+  static const proofContainer = Color(0xFF064E3B);
+  static const onProofContainer = Color(0xFFA7F3D0); // 7.6:1
+  static const warn = Color(0xFFFACC15);
 }
 
 /// Colours with a baking meaning rather than a Material role. Reached through
@@ -56,6 +73,7 @@ class BakingColors extends ThemeExtension<BakingColors> {
     required this.proof,
     required this.onProof,
     required this.proofContainer,
+    required this.onProofContainer,
     required this.warn,
   });
 
@@ -63,6 +81,11 @@ class BakingColors extends ThemeExtension<BakingColors> {
   final Color proof;
   final Color onProof;
   final Color proofContainer;
+
+  /// Muted text *on* [proofContainer]. `onSurfaceVariant` cannot be used
+  /// there: the container is a saturated emerald in both modes, and grey on it
+  /// measures 4.0:1 (light) and 3.8:1 (dark) — both under AA.
+  final Color onProofContainer;
 
   /// Advisory validation — distinct from `colorScheme.error`, which blocks.
   final Color warn;
@@ -72,11 +95,13 @@ class BakingColors extends ThemeExtension<BakingColors> {
     Color? proof,
     Color? onProof,
     Color? proofContainer,
+    Color? onProofContainer,
     Color? warn,
   }) => BakingColors(
     proof: proof ?? this.proof,
     onProof: onProof ?? this.onProof,
     proofContainer: proofContainer ?? this.proofContainer,
+    onProofContainer: onProofContainer ?? this.onProofContainer,
     warn: warn ?? this.warn,
   );
 
@@ -87,6 +112,11 @@ class BakingColors extends ThemeExtension<BakingColors> {
       proof: Color.lerp(proof, other.proof, t)!,
       onProof: Color.lerp(onProof, other.onProof, t)!,
       proofContainer: Color.lerp(proofContainer, other.proofContainer, t)!,
+      onProofContainer: Color.lerp(
+        onProofContainer,
+        other.onProofContainer,
+        t,
+      )!,
       warn: Color.lerp(warn, other.warn, t)!,
     );
   }
@@ -99,6 +129,11 @@ List<FontVariation> _wght(double weight) => [FontVariation('wght', weight)];
 /// Lining, fixed-width digits. Every gram and percentage uses this so columns
 /// of numbers line up instead of shimmering as values change.
 const tabularFigures = [FontFeature.tabularFigures()];
+
+/// The face every gram and percentage is set in. Pairs with [tabularFigures] —
+/// a number in the app is monospaced *and* tabular, so it reads as a
+/// measurement off a scale rather than as prose. Always applied together.
+const numericFont = 'IBMPlexMono';
 
 ThemeData buildTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
@@ -137,14 +172,17 @@ ThemeData buildTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: colorScheme.surface,
-    fontFamily: 'PlusJakartaSans',
+    fontFamily: 'IBMPlexSans',
     textTheme: textTheme,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
     extensions: [
       BakingColors(
         proof: isDark ? _Dark.proof : _Light.proof,
         onProof: isDark ? _Dark.surface : Colors.white,
         proofContainer: isDark ? _Dark.proofContainer : _Light.proofContainer,
+        onProofContainer: isDark
+            ? _Dark.onProofContainer
+            : _Light.onProofContainer,
         warn: isDark ? _Dark.warn : _Light.warn,
       ),
     ],
@@ -230,7 +268,12 @@ ThemeData buildTheme(Brightness brightness) {
         foregroundColor: colorScheme.onSurface,
         side: BorderSide(color: colorScheme.outline),
         minimumSize: const Size(0, minTapTarget),
-        textStyle: textTheme.labelLarge,
+        // The three dough styles share the width evenly and the control does
+        // not shrink its own text, so the longest label ("Preferment") sets the
+        // budget. Plex Sans is wider than it looks — at labelLarge with the
+        // Material default padding it wraps to two lines on a 411 dp phone.
+        padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+        textStyle: textTheme.labelMedium,
       ),
     ),
 

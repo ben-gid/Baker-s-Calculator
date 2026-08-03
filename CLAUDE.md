@@ -44,12 +44,23 @@ lib/
 is the whole app in one function. `RecipeInput` is immutable and serialisable;
 `Recipe` is display-ready with grams **and** baker's percentage per ingredient.
 
+**The flour in the dough is 100%.** Every percentage the baker types is a share
+of the flour weighed into the bowl, and a levain or preferment is just another
+ingredient measured against it — the way a written recipe reads ("500 g flour,
+375 g water, 100 g starter"). So the flour row says 100% whether or not there
+is a preferment, and a blend splits exactly that 100%.
+
 - **Classic** is *forward*: flour weight is given, everything scales off it.
 - **Sourdough / preferment** are *inverse*: finished dough weight is given, so
-  flour is solved by dividing by the baker's-percentage denominator. Egg weight
-  is subtracted **before** the division because eggs are a count, not a
-  percentage of flour. Preferment adds a term for the yeast carried inside the
-  preferment.
+  flour is solved by dividing by the baker's-percentage denominator, which
+  includes the levain/preferment percentage because the lump is weighed out
+  whole. Egg weight is subtracted **before** the division because eggs are a
+  count, not a percentage of flour. Mix-ins are deliberately *outside* the
+  denominator: "total dough weight" is the dough, and seeds go on top of it.
+- `Recipe.totalFlour`, `totalWater` and `hydration` still count what the levain
+  carries in, so the totals card shows the dough's **true** hydration, a little
+  above the figure typed in. It is labelled "Total hydration" for that reason —
+  the two numbers differing is correct, not a rounding bug.
 
 Do not put math in `state/` or `ui/`. If a screen needs a number, add a pure
 function to `domain/` and test it there.
@@ -58,9 +69,15 @@ function to `domain/` and test it there.
 
 `test/domain/legacy_goldens.json` was generated from the app's original
 label-keyed calculator before it was deleted. `calculator_parity_test.dart`
-asserts every one of those numbers still comes out of the new engine, except two
+asserts every **classic** number still comes out of the new engine, except two
 documented corrections in `knownLegacyBugs` (the old classic path summed the egg
 *count* into total weight instead of the egg *weight*).
+
+The sourdough and preferment goldens are exempt via `rebasedStyles`: the legacy
+engine measured against *total* flour, and the app now measures against the
+dough's flour, so the meaning of those inputs changed and every gram moved.
+Re-recording them would assert nothing, so the `dough flour is 100%` group
+asserts the algebra itself instead. The goldens stay in the file as the record.
 
 **Never regenerate the goldens to make a test pass.** If a change moves a
 number, either it is a bug, or it is a deliberate correction that belongs in
@@ -73,6 +90,15 @@ so the UI attaches each message to the right control. `IssueSeverity.error`
 means `calculate()` would be wrong or throw; `IssueSeverity.warning` is
 advisory and **must never block anything**. `calculationProvider` returns null
 only on errors.
+
+Every numeric input is nullable and an empty box means **null, not zero**.
+`NumberField` only rewrites its controller when state disagrees with what is
+typed, so coercing a blank to a number in `onChanged` types that number straight
+back in and the field can never be cleared — you would have to backspace 900
+down to 9, type 1000, then delete the 9. That is why `RecipeInput.copyWith`
+takes an `_unset` sentinel rather than `??`, so `copyWith(x: null)` clears.
+`validate()` then errors on the null and the recipe is blocked until it is
+refilled. Do not reintroduce `?? 0` in an `onChanged`.
 
 ### Testing seams, and the fake clock
 
@@ -99,13 +125,44 @@ the file read.
 
 ### Theme
 
+The palette is *instrument*, not artisan: near-black ink on cool paper with a
+single emerald accent, and saturation otherwise reserved for the two colours
+that warn (`warn` amber, `error` red). Brown and cream were tried and rejected —
+the app is a measuring tool, so it is dressed as one.
+
+The signature is `0xFF34D399`, and it is the **dark-mode** accent only. Light
+mode uses `0xFF047857` from the same family, because `34D399` measures 1.8:1 on
+paper and cannot carry text or a filled button there. Per-mode accent values are
+expected here, not a mistake to "fix" by unifying them.
+
 Every colour comes from `Theme.of(context).colorScheme` or the `BakingColors`
 theme extension ([lib/core/theme/app_theme.dart](lib/core/theme/app_theme.dart)).
 No widget hardcodes a hex value. Spacing, radii and durations come from
 [lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) — 4/8 dp only.
-Gram and percentage values use `fontFeatures: tabularFigures` so columns do not
-shimmer as the baker types. Plus Jakarta Sans is a bundled variable font;
-weights are selected with `FontVariation`, not `fontWeight` alone.
+
+`colorScheme.primary` and `BakingColors.proof` are deliberately the same
+emerald: dough being ready *is* the brand, so "ready" and "accent" are one
+colour. They stay separate names so a future change can split them again.
+
+`BakingColors.proofContainer` is a **tint**, not the accent, and that is load
+bearing. The totals card and the dough-temp result box are both painted with
+it, and between them they put four foregrounds on it — the total, muted labels,
+advisory amber, and the card border. Painting it the saturated `34D399` was
+tried and drops `warn` to 2.6:1. Muted text on it must use `onProofContainer`;
+`onSurfaceVariant` fails in both modes.
+
+Two faces. **IBM Plex Sans** (bundled variable font) for everything, with
+weights selected via `FontVariation`, not `fontWeight` alone. **IBM Plex Mono**
+for every gram, percentage and clock time — applied as
+`fontFamily: numericFont, fontFeatures: tabularFigures` together, always both.
+Mono has no variable cut, so `pubspec.yaml` registers static 400/500/600/700;
+the text theme must not ask for a weight outside that set or Flutter
+synthesises a fake one.
+
+`test/theme_contrast_test.dart` re-measures every ratio the palette claims in
+its comments — AA (4.5:1) for text on all three surfaces, and 3:1 for
+`outline`, which draws the boundary of controls the baker operates.
+`outlineVariant` is exempt: card edges and dividers only.
 
 ### Navigation
 
