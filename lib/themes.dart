@@ -22,6 +22,18 @@ class AppColors {
   static const warning = Color(0xFFF5E5B8); // oklch(0.7 0.05 100)
   static const success = Color(0xFFB8F5C2); // oklch(0.7 0.05 160)
   static const info = Color(0xFFB8D8F5); // oklch(0.7 0.05 260)
+
+  // Modern Recipe Colors
+  static const recipeColors = [
+    Color(0xFFE5E7EB), // Slate Gray (Neutral)
+    Color(0xFFFECACA), // Dusty Rose
+    Color(0xFFFED7AA), // Peach/Terracotta
+    Color(0xFFFEF08A), // Soft Gold
+    Color(0xFFD1FAE5), // Sage Green
+    Color(0xFFDBEAFE), // Sky Blue
+    Color(0xFFE0E7FF), // Indigo/Lavender
+    Color(0xFFF3E8FF), // Soft Purple
+  ];
 }
 
 final _radius = BorderRadius.circular(16);
@@ -37,8 +49,6 @@ ThemeData buildTheme({required bool isDark}) {
     onError: Colors.black,
     surface: isDark ? AppColors.bg : AppColors.bgLight,
     onSurface: AppColors.text,
-    background: isDark ? AppColors.bgDark : AppColors.bgLight,
-    onBackground: AppColors.text,
   );
 
   final baseTextColor = AppColors.text;
@@ -48,7 +58,7 @@ ThemeData buildTheme({required bool isDark}) {
     useMaterial3: true,
     brightness: isDark ? Brightness.dark : Brightness.light,
     colorScheme: colorScheme,
-    scaffoldBackgroundColor: colorScheme.background,
+    scaffoldBackgroundColor: colorScheme.surface,
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.surface,
       foregroundColor: colorScheme.onSurface,
@@ -76,10 +86,7 @@ ThemeData buildTheme({required bool isDark}) {
         fontSize: 16,
         fontWeight: FontWeight.w500,
       ),
-      bodyMedium: TextStyle(
-        color: mutedTextColor,
-        fontSize: 14,
-      ),
+      bodyMedium: TextStyle(color: mutedTextColor, fontSize: 14),
       labelLarge: TextStyle(
         color: baseTextColor,
         fontSize: 14,
@@ -138,7 +145,7 @@ ThemeData buildTheme({required bool isDark}) {
         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
       labelStyle: TextStyle(color: mutedTextColor),
-      hintStyle: TextStyle(color: mutedTextColor.withOpacity(0.7)),
+      hintStyle: TextStyle(color: mutedTextColor.withValues(alpha: 0.7)),
     ),
 
     // Chips
@@ -147,7 +154,7 @@ ThemeData buildTheme({required bool isDark}) {
       labelStyle: TextStyle(color: baseTextColor),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       side: const BorderSide(color: Colors.transparent),
-      selectedColor: AppColors.primary.withOpacity(0.2),
+      selectedColor: AppColors.primary.withValues(alpha: 0.2),
     ),
 
     // Dividers
@@ -178,13 +185,10 @@ ThemeData buildTheme({required bool isDark}) {
           return colorScheme.onSurface; // unselected text/icon color
         }),
         shape: WidgetStateProperty.all(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-      )
-    )
-
+      ),
+    ),
   );
 }
 
