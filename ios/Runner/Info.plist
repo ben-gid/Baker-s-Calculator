@@ -4,6 +4,20 @@
   <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <!-- Shared recipe links: bakerscalc://import?d=... -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLName</key>
+            <string>bakerscalc</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>bakerscalc</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleDisplayName</key>
     <string>Baker's Calculator</string>
     <key>CFBundleExecutable</key>
