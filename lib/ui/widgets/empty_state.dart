@@ -28,11 +28,7 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: Insets.lg),
             Text(
               title,
@@ -59,7 +55,11 @@ class EmptyState extends StatelessWidget {
 /// Dismissible banner for a load or save failure. Errors about the baker's data
 /// are never swallowed.
 class ErrorBanner extends StatelessWidget {
-  const ErrorBanner({super.key, required this.message, required this.onDismiss});
+  const ErrorBanner({
+    super.key,
+    required this.message,
+    required this.onDismiss,
+  });
 
   final String message;
   final VoidCallback onDismiss;
@@ -69,7 +69,12 @@ class ErrorBanner extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: Insets.lg),
-      padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.md, Insets.sm, Insets.md),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.lg,
+        Insets.md,
+        Insets.sm,
+        Insets.md,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(Radii.field),

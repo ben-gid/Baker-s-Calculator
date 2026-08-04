@@ -81,7 +81,6 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = ref.watch(settingsProvider);
-    final width = MediaQuery.sizeOf(context).width;
     final preview = _preview;
 
     return Scaffold(
@@ -95,18 +94,14 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.scrollBottom,
-          ),
+          padding: pagePadding(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SectionCard(
                 title: 'Paste the link',
-                note: 'A shared recipe link, or just the code from the end of it.',
+                note:
+                    'A shared recipe link, or just the code from the end of it.',
                 children: [
                   TextField(
                     controller: _controller,

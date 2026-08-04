@@ -38,10 +38,9 @@ class SettingsRepository {
 
   Settings read() => Settings(
     unit: MassUnit.fromName(_prefs.getString(_unitKey)),
-    themeMode: ThemeMode.values.firstWhere(
-      (m) => m.name == _prefs.getString(_themeKey),
-      orElse: () => ThemeMode.system,
-    ),
+    themeMode:
+        ThemeMode.values.asNameMap()[_prefs.getString(_themeKey)] ??
+        ThemeMode.system,
     showBakersPercent: _prefs.getBool(_percentKey) ?? true,
   );
 

@@ -18,7 +18,12 @@ enum BreadCharacter {
     hydration: 78,
     salt: 2,
   ),
-  everyday('Everyday loaf', 'Easy to handle, good for anything', hydration: 70, salt: 2),
+  everyday(
+    'Everyday loaf',
+    'Easy to handle, good for anything',
+    hydration: 70,
+    salt: 2,
+  ),
   sandwich(
     'Soft sandwich loaf',
     'Tight crumb, soft crust',

@@ -55,7 +55,6 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
 
     final timeline = _timeline ??= buildTimeline(recipe.input);
     final steps = timeline.scheduleFrom(_start);
-    final width = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       appBar: AppBar(title: Text('Plan: ${recipe.name}')),
@@ -71,12 +70,7 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.scrollBottom,
-          ),
+          padding: pagePadding(context),
           children: [
             _StartCard(
               start: _start,

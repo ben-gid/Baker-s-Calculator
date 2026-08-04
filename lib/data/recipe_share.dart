@@ -13,6 +13,7 @@ import '../domain/models/recipe.dart';
 import '../domain/models/recipe_input.dart';
 import '../domain/models/saved_recipe.dart';
 import '../domain/validation.dart';
+import 'recipe_repository.dart';
 
 const shareScheme = 'bakerscalc';
 
@@ -33,7 +34,9 @@ String toPlainText(SavedRecipe saved, MassUnit unit) {
     ..writeln();
 
   for (final group in recipe.groups) {
-    buffer.writeln('${group.name.toUpperCase()} — ${formatMass(group.grams, unit)}');
+    buffer.writeln(
+      '${group.name.toUpperCase()} — ${formatMass(group.grams, unit)}',
+    );
     for (final ingredient in group.ingredients) {
       buffer.writeln('  ${_line(ingredient, unit)}');
     }
@@ -62,7 +65,7 @@ String _line(Ingredient ingredient, MassUnit unit) {
 /// The full recipe as a JSON document, for file export and backup.
 String toJsonDocument(SavedRecipe recipe) =>
     const JsonEncoder.withIndent('  ').convert({
-      'version': 1,
+      'version': recipeFileVersion,
       'recipes': [recipe.toJson()],
     });
 
@@ -75,15 +78,14 @@ Uri toShareLink(SavedRecipe recipe) {
   final payload = base64Url.encode(
     utf8.encode(jsonEncode({'n': recipe.name, 'i': recipe.input.toJson()})),
   );
-  return Uri(scheme: shareScheme, host: 'import', queryParameters: {'d': payload});
+  return Uri(
+    scheme: shareScheme,
+    host: 'import',
+    queryParameters: {'d': payload},
+  );
 }
 
-class ImportedRecipe {
-  const ImportedRecipe({required this.name, required this.input});
-
-  final String name;
-  final RecipeInput input;
-}
+typedef ImportedRecipe = ({String name, RecipeInput input});
 
 /// Decodes a share payload. Throws [FormatException] on anything malformed —
 /// this is untrusted input and the caller must handle failure.
@@ -105,7 +107,7 @@ ImportedRecipe decodeSharePayload(String payload) {
       '${issues.where((i) => i.severity == IssueSeverity.error).map((i) => i.message).join(', ')}',
     );
   }
-  return ImportedRecipe(
+  return (
     name: (decoded['n'] as String?)?.trim().isNotEmpty == true
         ? decoded['n'] as String
         : 'Imported recipe',

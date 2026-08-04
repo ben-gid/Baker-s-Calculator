@@ -51,8 +51,7 @@ GoRouter buildRouter() => GoRouter(
     ),
     GoRoute(
       path: '/recipe/:id',
-      builder: (context, state) =>
-          RecipePage(id: state.pathParameters['id']!),
+      builder: (context, state) => RecipePage(id: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/recipe/:id/plan',
@@ -64,10 +63,7 @@ GoRouter buildRouter() => GoRouter(
       builder: (context, state) =>
           ImportPage(payload: state.uri.queryParameters['d']),
     ),
-    GoRoute(
-      path: '/suggest',
-      builder: (context, state) => const WizardPage(),
-    ),
+    GoRoute(path: '/suggest', builder: (context, state) => const WizardPage()),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),

@@ -154,7 +154,10 @@ void main() {
 
       expect(timeline.scheduleFrom(start).last.endsAt, outOfOven);
       // A sourdough with an overnight cold proof starts the day before.
-      expect(start.isBefore(outOfOven.subtract(const Duration(hours: 12))), isTrue);
+      expect(
+        start.isBefore(outOfOven.subtract(const Duration(hours: 12))),
+        isTrue,
+      );
     });
 
     test('editing one step shifts everything after it', () {

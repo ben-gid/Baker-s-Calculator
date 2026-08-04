@@ -160,10 +160,9 @@ class LibraryState {
       .where((r) => !favouritesOnly || r.isFavorite)
       .toList();
 
-  List<SavedRecipe> get visibleSystem =>
-      favouritesOnly ? const [] : system.where((r) => r.matches(query)).toList();
-
-  bool get isEmpty => saved.isEmpty;
+  List<SavedRecipe> get visibleSystem => favouritesOnly
+      ? const []
+      : system.where((r) => r.matches(query)).toList();
 
   LibraryState copyWith({
     List<SavedRecipe>? saved,
@@ -226,7 +225,9 @@ class LibraryController extends AsyncNotifier<LibraryState> {
 
   Future<void> _persist(List<SavedRecipe> saved) async {
     final current = await _ready();
-    state = AsyncData(current.copyWith(saved: _sorted(saved), clearError: true));
+    state = AsyncData(
+      current.copyWith(saved: _sorted(saved), clearError: true),
+    );
     try {
       await ref.read(recipeRepositoryProvider).save(saved);
     } on RecipeStoreException catch (e) {
@@ -234,15 +235,13 @@ class LibraryController extends AsyncNotifier<LibraryState> {
     }
   }
 
-  void search(String query) =>
-      state = AsyncData(_state.copyWith(query: query));
+  void search(String query) => state = AsyncData(_state.copyWith(query: query));
 
   void toggleFavouritesFilter() => state = AsyncData(
     _state.copyWith(favouritesOnly: !_state.favouritesOnly),
   );
 
-  void dismissError() =>
-      state = AsyncData(_state.copyWith(clearError: true));
+  void dismissError() => state = AsyncData(_state.copyWith(clearError: true));
 
   SavedRecipe? byId(String id) {
     for (final recipe in [..._state.saved, ..._state.system]) {
@@ -272,19 +271,6 @@ class LibraryController extends AsyncNotifier<LibraryState> {
     return recipe;
   });
 
-  /// Named `edit` rather than `update` because `AsyncNotifier` already defines
-  /// an `update` with an unrelated meaning.
-  Future<void> edit(SavedRecipe recipe) => _serialised(() async {
-    final next = [
-      for (final existing in (await _ready()).saved)
-        if (existing.id == recipe.id)
-          recipe.copyWith(updatedAt: DateTime.now())
-        else
-          existing,
-    ];
-    await _persist(next);
-  });
-
   Future<void> delete(String id) => _serialised(() async {
     await _persist([
       for (final recipe in (await _ready()).saved)
@@ -292,11 +278,22 @@ class LibraryController extends AsyncNotifier<LibraryState> {
     ]);
   });
 
-  Future<void> toggleFavourite(String id) async {
-    final recipe = byId(id);
-    if (recipe == null || recipe.isSystem) return;
-    await edit(recipe.copyWith(isFavorite: !recipe.isFavorite));
-  }
+  Future<void> toggleFavourite(String id) => _serialised(() async {
+    final saved = (await _ready()).saved;
+    // Built-in recipes are never in `saved`, so a system id matches nothing —
+    // the read-only rule is structural, and nothing is written.
+    if (!saved.any((r) => r.id == id)) return;
+    await _persist([
+      for (final recipe in saved)
+        if (recipe.id == id)
+          recipe.copyWith(
+            isFavorite: !recipe.isFavorite,
+            updatedAt: DateTime.now(),
+          )
+        else
+          recipe,
+    ]);
+  });
 
   /// Used for both "duplicate" and "save a copy of a built-in".
   Future<SavedRecipe> duplicate(SavedRecipe source, {String? name}) => add(

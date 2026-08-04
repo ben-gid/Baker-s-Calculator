@@ -24,7 +24,6 @@ class RecipePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(libraryProvider);
     final settings = ref.watch(settingsProvider);
-    final width = MediaQuery.sizeOf(context).width;
 
     final recipe = library.hasValue
         ? ref.read(libraryProvider.notifier).byId(id)
@@ -64,9 +63,7 @@ class RecipePage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: 'Share',
-            onPressed: blocked
-                ? null
-                : () => _share(context, recipe, ref),
+            onPressed: blocked ? null : () => _share(context, recipe, ref),
           ),
           _Menu(recipe: recipe),
           const SizedBox(width: Insets.xs),
@@ -81,12 +78,7 @@ class RecipePage extends ConsumerWidget {
             ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.scrollBottom,
-          ),
+          padding: pagePadding(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -96,10 +88,7 @@ class RecipePage extends ConsumerWidget {
                   child: _BuiltInBanner(recipe: recipe),
                 ),
               if (recipe.notes != null && recipe.notes!.isNotEmpty) ...[
-                SectionCard(
-                  title: 'Notes',
-                  children: [Text(recipe.notes!)],
-                ),
+                SectionCard(title: 'Notes', children: [Text(recipe.notes!)]),
                 const SizedBox(height: Insets.md),
               ],
               if (blocked)
@@ -172,7 +161,9 @@ class _BuiltInBanner extends ConsumerWidget {
                   .read(libraryProvider.notifier)
                   .duplicate(recipe, name: recipe.name);
               messenger.showSnackBar(
-                SnackBar(content: Text('Copied "${copy.name}" to your recipes')),
+                SnackBar(
+                  content: Text('Copied "${copy.name}" to your recipes'),
+                ),
               );
               router.go('/recipe/${copy.id}');
             },

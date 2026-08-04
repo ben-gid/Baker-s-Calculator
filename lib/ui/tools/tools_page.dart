@@ -12,17 +12,11 @@ class ToolsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
     return Scaffold(
       appBar: AppBar(title: const Text('Tools')),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.scrollBottom,
-          ),
+          padding: pagePadding(context),
           children: [
             Card(
               child: ListTile(
@@ -71,20 +65,18 @@ class _DoughTempCardState extends State<_DoughTempCard> {
   bool _usePreferment = false;
 
   /// Null while any box in use is empty — an empty box is not 0 °C.
-  DoughTempResult? get _result =>
+  ({double waterTemp, String? warning})? get _result =>
       (_desired == null ||
           _room == null ||
           _flour == null ||
           (_usePreferment && _preferment == null))
       ? null
       : waterTemperature(
-          DoughTempInputs(
-            desiredDoughTemp: _desired!,
-            roomTemp: _room!,
-            flourTemp: _flour!,
-            prefermentTemp: _usePreferment ? _preferment : null,
-            frictionFactor: _friction,
-          ),
+          desiredDoughTemp: _desired!,
+          roomTemp: _room!,
+          flourTemp: _flour!,
+          prefermentTemp: _usePreferment ? _preferment : null,
+          frictionFactor: _friction,
         );
 
   @override

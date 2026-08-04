@@ -240,6 +240,22 @@ void main() {
     expect(find.textContaining('Each'), findsOneWidget);
   });
 
+  testWidgets('the optional sections start collapsed and open on tap', (
+    tester,
+  ) async {
+    await boot(tester);
+
+    // Collapsed: the card announces itself, but none of its controls are built.
+    expect(find.text('Flour blend'), findsOneWidget);
+    expect(find.text('Add flour'), findsNothing);
+
+    await tapVisible(tester, find.text('Flour blend'));
+    expect(find.text('Add flour'), findsOneWidget);
+
+    await tapVisible(tester, find.text('Add flour'));
+    expect(find.widgetWithText(TextField, 'Flour 1'), findsOneWidget);
+  });
+
   testWidgets('the library ships with built-in recipes and no saved ones', (
     tester,
   ) async {

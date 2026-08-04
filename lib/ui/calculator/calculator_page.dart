@@ -66,16 +66,11 @@ class CalculatorPage extends ConsumerWidget {
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _Scroll(width: width, child: form),
-                  ),
-                  Expanded(
-                    child: _Scroll(width: width, child: result),
-                  ),
+                  Expanded(child: _Scroll(child: form)),
+                  Expanded(child: _Scroll(child: result)),
                 ],
               )
             : _Scroll(
-                width: width,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -91,21 +86,13 @@ class CalculatorPage extends ConsumerWidget {
 }
 
 class _Scroll extends StatelessWidget {
-  const _Scroll({required this.width, required this.child});
+  const _Scroll({required this.child});
 
-  final double width;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    padding: EdgeInsets.fromLTRB(
-      pageMargin(width),
-      Insets.lg,
-      pageMargin(width),
-      Insets.scrollBottom,
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) =>
+      SingleChildScrollView(padding: pagePadding(context), child: child);
 }
 
 class _CalculatorForm extends ConsumerWidget {

@@ -77,7 +77,6 @@ void main() {
           colors.primaryContainer,
           4.5,
         );
-        expectAtLeast('onProof on proof', baking.onProof, baking.proof, 4.5);
       });
 
       // The totals card and the dough-temp result box are both painted

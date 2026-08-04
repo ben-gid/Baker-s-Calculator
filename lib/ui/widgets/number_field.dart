@@ -23,7 +23,6 @@ class NumberField extends StatefulWidget {
     this.suffix,
     this.helper,
     this.issue,
-    this.autofocus = false,
     this.dense = false,
   });
 
@@ -40,7 +39,6 @@ class NumberField extends StatefulWidget {
 
   final String? helper;
   final InputIssue? issue;
-  final bool autofocus;
 
   @override
   State<NumberField> createState() => _NumberFieldState();
@@ -83,7 +81,6 @@ class _NumberFieldState extends State<NumberField> {
       padding: EdgeInsets.only(bottom: widget.dense ? 0 : Insets.md),
       child: TextField(
         controller: _controller,
-        autofocus: widget.autofocus,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textInputAction: TextInputAction.next,
         inputFormatters: [

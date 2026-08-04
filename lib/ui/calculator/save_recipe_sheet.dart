@@ -18,9 +18,8 @@ Future<void> showSaveRecipeSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => _SaveSheet(
-      suggestedName: suggestedName ?? '${input.style.label} loaf',
-    ),
+    builder: (context) =>
+        _SaveSheet(suggestedName: suggestedName ?? '${input.style.label} loaf'),
   );
   if (name == null) return;
 

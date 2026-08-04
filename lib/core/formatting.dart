@@ -13,10 +13,8 @@ enum MassUnit {
   final String symbol;
   final String label;
 
-  static MassUnit fromName(String? name) => MassUnit.values.firstWhere(
-    (u) => u.name == name,
-    orElse: () => MassUnit.grams,
-  );
+  static MassUnit fromName(String? name) =>
+      MassUnit.values.asNameMap()[name] ?? MassUnit.grams;
 }
 
 const double _gramsPerOunce = 28.349523125;
@@ -26,9 +24,9 @@ const double _gramsPerOunce = 28.349523125;
 /// Grams keep one decimal below 10 g — salt and yeast live there and a whole
 /// gram is a big relative error — and are whole numbers above it.
 String formatMass(double grams, MassUnit unit) =>
-    '${formatMassValue(grams, unit)} ${unit.symbol}';
+    '${_formatMassValue(grams, unit)} ${unit.symbol}';
 
-String formatMassValue(double grams, MassUnit unit) {
+String _formatMassValue(double grams, MassUnit unit) {
   if (unit == MassUnit.ounces) {
     return (grams / _gramsPerOunce).toStringAsFixed(2);
   }

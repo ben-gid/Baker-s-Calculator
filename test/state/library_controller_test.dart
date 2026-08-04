@@ -77,9 +77,10 @@ void main() {
     // before anyone has opened the Recipes tab.
     await controller().add(name: 'Saturday loaf', input: startingPoint);
 
-    expect(store.recipes.map((r) => r.name), containsAll(
-      ['Last week', 'Saturday loaf'],
-    ));
+    expect(
+      store.recipes.map((r) => r.name),
+      containsAll(['Last week', 'Saturday loaf']),
+    );
     expect(store.recipes, hasLength(2));
   });
 
@@ -145,27 +146,38 @@ void main() {
 
     controller().search('rye');
     final byTag = container.read(libraryProvider).value!;
-    expect(byTag.visibleSystem.map((r) => r.name), contains('Light Rye Sourdough'));
+    expect(
+      byTag.visibleSystem.map((r) => r.name),
+      contains('Light Rye Sourdough'),
+    );
 
     controller().search('preferment');
     final byStyle = container.read(libraryProvider).value!;
-    expect(byStyle.visibleSystem.map((r) => r.name), contains('Ciabatta (Biga)'));
+    expect(
+      byStyle.visibleSystem.map((r) => r.name),
+      contains('Ciabatta (Biga)'),
+    );
 
     controller().search('zzzz');
     expect(container.read(libraryProvider).value!.visibleSystem, isEmpty);
   });
 
-  test('the favourites filter hides built-ins and unfavourited recipes',
-      () async {
-    await setUpContainer();
-    final recipe = await controller().add(name: 'Keeper', input: startingPoint);
-    await controller().toggleFavourite(recipe.id);
-    await controller().add(name: 'Ordinary', input: startingPoint);
+  test(
+    'the favourites filter hides built-ins and unfavourited recipes',
+    () async {
+      await setUpContainer();
+      final recipe = await controller().add(
+        name: 'Keeper',
+        input: startingPoint,
+      );
+      await controller().toggleFavourite(recipe.id);
+      await controller().add(name: 'Ordinary', input: startingPoint);
 
-    controller().toggleFavouritesFilter();
-    final state = container.read(libraryProvider).value!;
+      controller().toggleFavouritesFilter();
+      final state = container.read(libraryProvider).value!;
 
-    expect(state.visibleSaved.map((r) => r.name), ['Keeper']);
-    expect(state.visibleSystem, isEmpty);
-  });
+      expect(state.visibleSaved.map((r) => r.name), ['Keeper']);
+      expect(state.visibleSystem, isEmpty);
+    },
+  );
 }

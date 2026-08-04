@@ -271,7 +271,7 @@ class RecipeInput {
       );
     } on TypeError catch (e) {
       throw FormatException('Malformed recipe input: $e');
-    } on StateError catch (e) {
+    } on ArgumentError catch (e) {
       throw FormatException('Unknown dough style: $e');
     }
   }

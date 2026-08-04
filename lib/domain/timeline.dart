@@ -16,7 +16,6 @@ enum StepKind {
   bulk,
   fold,
   preshape,
-  bench,
   shape,
   proof,
   bake,
@@ -50,12 +49,8 @@ class BakeStep {
     _ => false,
   };
 
-  BakeStep withDuration(Duration duration) => BakeStep(
-    kind: kind,
-    title: title,
-    duration: duration,
-    detail: detail,
-  );
+  BakeStep withDuration(Duration duration) =>
+      BakeStep(kind: kind, title: title, duration: duration, detail: detail);
 }
 
 /// A step pinned to a wall-clock time.
@@ -151,12 +146,7 @@ BakeTimeline _classicTimeline(RecipeInput input, double richnessFactor) {
       duration: _hours(bulk * 0.6),
       detail: 'Until a poked dent springs back slowly.',
     ),
-    BakeStep(
-      kind: StepKind.bake,
-      title: 'Bake',
-      duration: _bakeDuration(input),
-      detail: _bakeDetail(input),
-    ),
+    _bake(input),
   ]);
 }
 
@@ -206,12 +196,7 @@ BakeTimeline _sourdoughTimeline(RecipeInput input, double richnessFactor) {
       duration: Duration(hours: 12),
       detail: 'Overnight in the fridge. Bake straight from cold.',
     ),
-    BakeStep(
-      kind: StepKind.bake,
-      title: 'Bake',
-      duration: _bakeDuration(input),
-      detail: _bakeDetail(input),
-    ),
+    _bake(input),
   ]);
 }
 
@@ -247,32 +232,22 @@ BakeTimeline _prefermentTimeline(RecipeInput input, double richnessFactor) {
       title: 'Final proof',
       duration: _hours(1.25 * richnessFactor),
     ),
-    BakeStep(
-      kind: StepKind.bake,
-      title: 'Bake',
-      duration: _bakeDuration(input),
-      detail: _bakeDetail(input),
-    ),
+    _bake(input),
   ]);
 }
 
 /// Enriched doughs bake cooler and shorter; lean hearth loaves go long and hot.
-Duration _bakeDuration(RecipeInput input) {
+BakeStep _bake(RecipeInput input) {
   final enrichment = input.enrichmentOrEmpty;
   final isEnriched =
       (enrichment.fatPercent ?? 0) + (enrichment.sugarPercent ?? 0) > 8 ||
       (enrichment.eggCount ?? 0) > 0;
-  return isEnriched
-      ? const Duration(minutes: 30)
-      : const Duration(minutes: 45);
-}
-
-String _bakeDetail(RecipeInput input) {
-  final enrichment = input.enrichmentOrEmpty;
-  final isEnriched =
-      (enrichment.fatPercent ?? 0) + (enrichment.sugarPercent ?? 0) > 8 ||
-      (enrichment.eggCount ?? 0) > 0;
-  return isEnriched
-      ? '180 °C until deep golden and 90 °C inside.'
-      : '250 °C covered for 20 minutes, then uncovered at 230 °C.';
+  return BakeStep(
+    kind: StepKind.bake,
+    title: 'Bake',
+    duration: Duration(minutes: isEnriched ? 30 : 45),
+    detail: isEnriched
+        ? '180 °C until deep golden and 90 °C inside.'
+        : '250 °C covered for 20 minutes, then uncovered at 230 °C.',
+  );
 }

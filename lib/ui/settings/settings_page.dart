@@ -13,18 +13,12 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final controller = ref.read(settingsProvider.notifier);
-    final width = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.xl,
-          ),
+          padding: pagePadding(context, bottom: Insets.xl),
           children: [
             SectionCard(
               title: 'Units',

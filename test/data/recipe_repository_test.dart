@@ -88,19 +88,21 @@ void main() {
     expect(store.file.existsSync(), isFalse);
   });
 
-  test('a recipe with an unreadable entry is reported, not silently dropped',
-      () async {
-    await store.file.writeAsString(
-      jsonEncode({
-        'version': 1,
-        'recipes': [
-          {'id': 'x', 'name': 'Broken'}, // no input
-        ],
-      }),
-    );
+  test(
+    'a recipe with an unreadable entry is reported, not silently dropped',
+    () async {
+      await store.file.writeAsString(
+        jsonEncode({
+          'version': 1,
+          'recipes': [
+            {'id': 'x', 'name': 'Broken'}, // no input
+          ],
+        }),
+      );
 
-    await expectLater(store.load, throwsA(isA<RecipeStoreException>()));
-  });
+      await expectLater(store.load, throwsA(isA<RecipeStoreException>()));
+    },
+  );
 
   test('an unknown dough style is rejected rather than guessed', () async {
     await store.file.writeAsString(

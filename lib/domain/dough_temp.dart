@@ -11,50 +11,25 @@ library;
 const double handMixFriction = 1;
 const double standMixerFriction = 5;
 
-class DoughTempInputs {
-  const DoughTempInputs({
-    required this.desiredDoughTemp,
-    required this.roomTemp,
-    required this.flourTemp,
-    this.prefermentTemp,
-    this.frictionFactor = handMixFriction,
-  });
+/// [prefermentTemp] is null for a straight dough — a levain or preferment
+/// changes the multiplier, not just the sum.
+///
+/// The returned `warning` is set when the water temperature is not reachable in
+/// a normal kitchen, so the UI can suggest chilling the flour or using ice.
+({double waterTemp, String? warning}) waterTemperature({
+  required double desiredDoughTemp,
+  required double roomTemp,
+  required double flourTemp,
+  double? prefermentTemp,
+  double frictionFactor = handMixFriction,
+}) {
+  // Room, flour, friction, and the preferment if there is one.
+  final factors = prefermentTemp == null ? 3 : 4;
+  final water =
+      desiredDoughTemp * factors -
+      (roomTemp + flourTemp + (prefermentTemp ?? 0) + frictionFactor);
 
-  final double desiredDoughTemp;
-  final double roomTemp;
-  final double flourTemp;
-
-  /// Levain or preferment temperature. Omit for a straight dough — it changes
-  /// the multiplier, not just the sum.
-  final double? prefermentTemp;
-
-  final double frictionFactor;
-
-  /// Room, flour, friction, and the preferment if there is one.
-  int get factorCount => prefermentTemp == null ? 3 : 4;
-}
-
-class DoughTempResult {
-  const DoughTempResult({required this.waterTemp, required this.warning});
-
-  final double waterTemp;
-
-  /// Set when the required water temperature is not reachable in a normal
-  /// kitchen, so the UI can suggest chilling the flour or using ice.
-  final String? warning;
-}
-
-DoughTempResult waterTemperature(DoughTempInputs inputs) {
-  final total = inputs.desiredDoughTemp * inputs.factorCount;
-  final known =
-      inputs.roomTemp +
-      inputs.flourTemp +
-      (inputs.prefermentTemp ?? 0) +
-      inputs.frictionFactor;
-
-  final water = total - known;
-
-  return DoughTempResult(
+  return (
     waterTemp: water,
     warning: switch (water) {
       < 0 => 'Colder than ice water — chill the flour or add ice to the mix',

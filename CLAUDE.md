@@ -137,8 +137,9 @@ expected here, not a mistake to "fix" by unifying them.
 
 Every colour comes from `Theme.of(context).colorScheme` or the `BakingColors`
 theme extension ([lib/core/theme/app_theme.dart](lib/core/theme/app_theme.dart)).
-No widget hardcodes a hex value. Spacing, radii and durations come from
-[lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) — 4/8 dp only.
+No widget hardcodes a hex value. Spacing and radii come from
+[lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) — 4/8 dp only, plus
+`pagePadding(context)`, which every full-screen scroll uses.
 
 `colorScheme.primary` and `BakingColors.proof` are deliberately the same
 emerald: dough being ready *is* the brand, so "ready" and "accent" are one

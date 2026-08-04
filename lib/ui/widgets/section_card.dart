@@ -33,7 +33,9 @@ class SectionCard extends StatelessWidget {
               Row(
                 children: [
                   if (title != null)
-                    Expanded(child: Text(title!, style: theme.textTheme.titleMedium)),
+                    Expanded(
+                      child: Text(title!, style: theme.textTheme.titleMedium),
+                    ),
                   if (title == null) const Spacer(),
                   if (trailing != null) trailing!,
                 ],
@@ -54,7 +56,11 @@ class SectionCard extends StatelessWidget {
 
 /// A [SectionCard] that starts collapsed — used for the optional parts of the
 /// calculator so the first screen is short.
-class CollapsibleCard extends StatefulWidget {
+///
+/// The expand/collapse behaviour, the rotating chevron and the semantics are
+/// all `ExpansionTile`'s; `expansionTileTheme` in `app_theme.dart` strips its
+/// default dividers so it sits inside a [Card] cleanly.
+class CollapsibleCard extends StatelessWidget {
   const CollapsibleCard({
     super.key,
     required this.title,
@@ -68,87 +74,33 @@ class CollapsibleCard extends StatefulWidget {
   final String? subtitle;
   final bool initiallyExpanded;
 
-  /// Shown when collapsed to say the section holds something, e.g. "3 flours".
+  /// Says the section already holds something, e.g. "3 flours". Takes the
+  /// place of [subtitle] when set — what is in there beats what could be.
   final String? badge;
 
   final List<Widget> children;
 
   @override
-  State<CollapsibleCard> createState() => _CollapsibleCardState();
-}
-
-class _CollapsibleCardState extends State<CollapsibleCard> {
-  late bool _expanded = widget.initiallyExpanded;
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final caption = badge ?? subtitle;
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Semantics(
-              button: true,
-              expanded: _expanded,
-              child: Padding(
-                padding: const EdgeInsets.all(Insets.lg),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.title, style: theme.textTheme.titleMedium),
-                          if (widget.subtitle != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.subtitle!,
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (widget.badge != null && !_expanded) ...[
-                      Text(widget.badge!, style: theme.textTheme.labelMedium),
-                      const SizedBox(width: Insets.sm),
-                    ],
-                    AnimatedRotation(
-                      turns: _expanded ? 0.5 : 0,
-                      duration: Motion.fast,
-                      child: Icon(
-                        Icons.expand_more,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          AnimatedSize(
-            duration: Motion.normal,
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: _expanded
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Insets.lg,
-                      0,
-                      Insets.lg,
-                      Insets.lg,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: widget.children,
-                    ),
-                  )
-                : const SizedBox(width: double.infinity),
-          ),
-        ],
+      child: ExpansionTile(
+        title: Text(title, style: theme.textTheme.titleMedium),
+        subtitle: caption == null
+            ? null
+            : Text(caption, style: theme.textTheme.bodySmall),
+        initiallyExpanded: initiallyExpanded,
+        tilePadding: const EdgeInsets.all(Insets.lg),
+        childrenPadding: const EdgeInsets.fromLTRB(
+          Insets.lg,
+          0,
+          Insets.lg,
+          Insets.lg,
+        ),
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }

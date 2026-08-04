@@ -42,12 +42,7 @@ class LibraryPage extends ConsumerWidget {
           data: (state) => Column(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(
-                  pageMargin(width),
-                  0,
-                  pageMargin(width),
-                  Insets.md,
-                ),
+                padding: pagePadding(context, top: 0, bottom: Insets.md),
                 child: Row(
                   children: [
                     Expanded(
@@ -121,12 +116,7 @@ class _RecipeList extends StatelessWidget {
     }
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        pageMargin(width),
-        0,
-        pageMargin(width),
-        Insets.scrollBottom,
-      ),
+      padding: pagePadding(context, top: 0),
       children: [
         if (state.error != null)
           ErrorBanner(message: state.error!, onDismiss: onDismissError),

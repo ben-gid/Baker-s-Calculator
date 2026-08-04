@@ -16,6 +16,7 @@ enum DoughStyle {
   /// True when the baker supplies flour weight rather than total dough weight.
   bool get isForward => this == DoughStyle.classic;
 
-  static DoughStyle fromName(String name) =>
-      DoughStyle.values.firstWhere((s) => s.name == name);
+  /// Throws [ArgumentError] on an unknown name — callers decoding untrusted
+  /// JSON must catch it.
+  static DoughStyle fromName(String name) => DoughStyle.values.byName(name);
 }

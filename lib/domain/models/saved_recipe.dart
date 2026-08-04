@@ -83,7 +83,9 @@ class SavedRecipe {
         id: json['id'] as String,
         name: json['name'] as String,
         input: RecipeInput.fromJson(json['input'] as Map<String, dynamic>),
-        tags: [for (final t in (json['tags'] as List? ?? const [])) t as String],
+        tags: [
+          for (final t in (json['tags'] as List? ?? const [])) t as String,
+        ],
         notes: json['notes'] as String?,
         isFavorite: json['isFavorite'] as bool? ?? false,
         isSystem: isSystem,

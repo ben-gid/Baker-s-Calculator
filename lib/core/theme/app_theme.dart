@@ -71,7 +71,6 @@ abstract final class _Dark {
 class BakingColors extends ThemeExtension<BakingColors> {
   const BakingColors({
     required this.proof,
-    required this.onProof,
     required this.proofContainer,
     required this.onProofContainer,
     required this.warn,
@@ -79,7 +78,6 @@ class BakingColors extends ThemeExtension<BakingColors> {
 
   /// Fermentation / "ready" indicators, and the accent on totals.
   final Color proof;
-  final Color onProof;
   final Color proofContainer;
 
   /// Muted text *on* [proofContainer]. `onSurfaceVariant` cannot be used
@@ -93,13 +91,11 @@ class BakingColors extends ThemeExtension<BakingColors> {
   @override
   BakingColors copyWith({
     Color? proof,
-    Color? onProof,
     Color? proofContainer,
     Color? onProofContainer,
     Color? warn,
   }) => BakingColors(
     proof: proof ?? this.proof,
-    onProof: onProof ?? this.onProof,
     proofContainer: proofContainer ?? this.proofContainer,
     onProofContainer: onProofContainer ?? this.onProofContainer,
     warn: warn ?? this.warn,
@@ -110,7 +106,6 @@ class BakingColors extends ThemeExtension<BakingColors> {
     if (other == null) return this;
     return BakingColors(
       proof: Color.lerp(proof, other.proof, t)!,
-      onProof: Color.lerp(onProof, other.onProof, t)!,
       proofContainer: Color.lerp(proofContainer, other.proofContainer, t)!,
       onProofContainer: Color.lerp(
         onProofContainer,
@@ -178,7 +173,6 @@ ThemeData buildTheme(Brightness brightness) {
     extensions: [
       BakingColors(
         proof: isDark ? _Dark.proof : _Light.proof,
-        onProof: isDark ? _Dark.surface : Colors.white,
         proofContainer: isDark ? _Dark.proofContainer : _Light.proofContainer,
         onProofContainer: isDark
             ? _Dark.onProofContainer

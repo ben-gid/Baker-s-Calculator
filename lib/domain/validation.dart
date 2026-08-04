@@ -33,8 +33,6 @@ enum RecipeField {
 }
 
 class InputIssue {
-  const InputIssue(this.field, this.message, this.severity);
-
   const InputIssue.error(this.field, this.message)
     : severity = IssueSeverity.error;
   const InputIssue.warning(this.field, this.message)

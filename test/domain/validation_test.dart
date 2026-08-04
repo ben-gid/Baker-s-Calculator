@@ -80,14 +80,18 @@ void main() {
     test('unusual but workable values warn instead of blocking', () {
       final issues = validate(_classic.copyWith(hydration: 98));
       expect(issues.hasErrors, isFalse);
-      expect(issues.firstFor(RecipeField.hydration)!.severity,
-          IssueSeverity.warning);
+      expect(
+        issues.firstFor(RecipeField.hydration)!.severity,
+        IssueSeverity.warning,
+      );
     });
 
     test('errors outrank warnings for the same field', () {
       final issues = validate(_classic.copyWith(hydration: 500));
-      expect(issues.firstFor(RecipeField.hydration)!.severity,
-          IssueSeverity.error);
+      expect(
+        issues.firstFor(RecipeField.hydration)!.severity,
+        IssueSeverity.error,
+      );
     });
 
     test('eggs heavier than the dough are caught before the math runs', () {
@@ -157,12 +161,10 @@ void main() {
     test('straight dough uses three factors', () {
       // DDT 25 x 3 = 75; 75 - (21 room + 20 flour + 2 friction) = 32
       final result = waterTemperature(
-        const DoughTempInputs(
-          desiredDoughTemp: 25,
-          roomTemp: 21,
-          flourTemp: 20,
-          frictionFactor: 2,
-        ),
+        desiredDoughTemp: 25,
+        roomTemp: 21,
+        flourTemp: 20,
+        frictionFactor: 2,
       );
       expect(result.waterTemp, closeTo(32, 1e-9));
       expect(result.warning, isNull);
@@ -171,36 +173,30 @@ void main() {
     test('a preferment adds a fourth factor', () {
       // DDT 25 x 4 = 100; 100 - (21 + 20 + 23 + 2) = 34
       final result = waterTemperature(
-        const DoughTempInputs(
-          desiredDoughTemp: 25,
-          roomTemp: 21,
-          flourTemp: 20,
-          prefermentTemp: 23,
-          frictionFactor: 2,
-        ),
+        desiredDoughTemp: 25,
+        roomTemp: 21,
+        flourTemp: 20,
+        prefermentTemp: 23,
+        frictionFactor: 2,
       );
       expect(result.waterTemp, closeTo(34, 1e-9));
     });
 
     test('unreachable water temperatures come back with advice', () {
       final tooCold = waterTemperature(
-        const DoughTempInputs(
-          desiredDoughTemp: 22,
-          roomTemp: 32,
-          flourTemp: 32,
-          frictionFactor: 8,
-        ),
+        desiredDoughTemp: 22,
+        roomTemp: 32,
+        flourTemp: 32,
+        frictionFactor: 8,
       );
       expect(tooCold.waterTemp, lessThan(0));
       expect(tooCold.warning, contains('ice'));
 
       final tooHot = waterTemperature(
-        const DoughTempInputs(
-          desiredDoughTemp: 30,
-          roomTemp: 5,
-          flourTemp: 5,
-          frictionFactor: 0,
-        ),
+        desiredDoughTemp: 30,
+        roomTemp: 5,
+        flourTemp: 5,
+        frictionFactor: 0,
       );
       expect(tooHot.warning, contains('kill the yeast'));
     });

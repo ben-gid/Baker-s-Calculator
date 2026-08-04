@@ -31,7 +31,6 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final input = composeRecipe(_choices);
-    final width = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Suggest a recipe')),
@@ -52,12 +51,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            pageMargin(width),
-            Insets.lg,
-            pageMargin(width),
-            Insets.scrollBottom,
-          ),
+          padding: pagePadding(context),
           children: [
             SectionCard(
               title: 'What are you baking?',

@@ -14,6 +14,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../domain/models/saved_recipe.dart';
 
+/// Stamped into every document this app writes, so a future version can tell
+/// what it is reading. Nothing reads it yet — there is only one format.
+const recipeFileVersion = 1;
+
 class RecipeStoreException implements Exception {
   RecipeStoreException(this.message);
   final String message;
@@ -39,8 +43,6 @@ class FileRecipeRepository implements RecipeRepository {
   FileRecipeRepository(this.file);
 
   final File file;
-
-  static const _formatVersion = 1;
 
   /// A *corrupt* file is an error the caller must surface — silently returning
   /// an empty list would look like "all my recipes vanished", and the next save
@@ -76,7 +78,7 @@ class FileRecipeRepository implements RecipeRepository {
   @override
   Future<void> save(List<SavedRecipe> recipes) async {
     final payload = const JsonEncoder.withIndent('  ').convert({
-      'version': _formatVersion,
+      'version': recipeFileVersion,
       'recipes': [for (final recipe in recipes) recipe.toJson()],
     });
 
