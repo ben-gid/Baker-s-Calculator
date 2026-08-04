@@ -1,0 +1,320 @@
+{
+  "version": 1,
+  "recipes": [
+    {
+      "id": "sys-country-sourdough",
+      "name": "Country Sourdough",
+      "tags": ["sourdough", "everyday"],
+      "notes": "The default loaf. Bulk 4-5 h at 24 °C, then cold proof overnight.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "sourdough",
+        "totalDoughWeight": 900,
+        "hydration": 75,
+        "salt": 2,
+        "levainPercent": 20,
+        "levainHydration": 100,
+        "flourBlend": [
+          { "name": "Bread flour", "percent": 90 },
+          { "name": "Whole wheat", "percent": 10 }
+        ],
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-seeded-multigrain",
+      "name": "Seeded Multigrain Sourdough",
+      "tags": ["sourdough", "seeded"],
+      "notes": "Soak the seeds first or they will steal water from the dough.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "sourdough",
+        "totalDoughWeight": 950,
+        "hydration": 78,
+        "salt": 2,
+        "levainPercent": 20,
+        "levainHydration": 100,
+        "flourBlend": [
+          { "name": "Bread flour", "percent": 70 },
+          { "name": "Whole wheat", "percent": 20 },
+          { "name": "Rye", "percent": 10 }
+        ],
+        "mixIns": [{ "name": "Mixed seeds", "percent": 12 }],
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-whole-wheat-sourdough",
+      "name": "100% Whole Wheat Sourdough",
+      "tags": ["sourdough", "wholegrain"],
+      "notes": "Whole grain drinks more water. Expect a denser, sweeter crumb.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "sourdough",
+        "totalDoughWeight": 900,
+        "hydration": 82,
+        "salt": 2.2,
+        "levainPercent": 20,
+        "levainHydration": 100,
+        "flourBlend": [{ "name": "Whole wheat", "percent": 100 }],
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-light-rye",
+      "name": "Light Rye Sourdough",
+      "tags": ["sourdough", "rye"],
+      "notes": "Rye has little gluten — handle gently and do not over-proof.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "sourdough",
+        "totalDoughWeight": 900,
+        "hydration": 78,
+        "salt": 2,
+        "levainPercent": 25,
+        "levainHydration": 100,
+        "flourBlend": [
+          { "name": "Bread flour", "percent": 80 },
+          { "name": "Rye", "percent": 20 }
+        ],
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-walnut-raisin",
+      "name": "Walnut Raisin Sourdough",
+      "tags": ["sourdough", "enriched"],
+      "notes": "Add the walnuts and raisins during the last fold.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "sourdough",
+        "totalDoughWeight": 900,
+        "hydration": 74,
+        "salt": 2,
+        "levainPercent": 20,
+        "levainHydration": 100,
+        "flourBlend": [
+          { "name": "Bread flour", "percent": 85 },
+          { "name": "Whole wheat", "percent": 15 }
+        ],
+        "mixIns": [
+          { "name": "Walnuts", "percent": 15 },
+          { "name": "Raisins", "percent": 15 }
+        ],
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-baguette",
+      "name": "Baguette (Poolish)",
+      "tags": ["preferment", "french"],
+      "notes": "Poolish at 100% hydration, 12-16 h at room temperature.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "preferment",
+        "totalDoughWeight": 350,
+        "hydration": 70,
+        "salt": 2,
+        "prefermentPercent": 30,
+        "prefermentHydration": 100,
+        "prefermentYeast": 0.2,
+        "loaves": 3
+      }
+    },
+    {
+      "id": "sys-ciabatta",
+      "name": "Ciabatta (Biga)",
+      "tags": ["preferment", "italian"],
+      "notes": "Stiff biga at 55%. Very wet final dough — use wet hands.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "preferment",
+        "totalDoughWeight": 500,
+        "hydration": 80,
+        "salt": 2.2,
+        "prefermentPercent": 40,
+        "prefermentHydration": 55,
+        "prefermentYeast": 0.3,
+        "loaves": 2
+      }
+    },
+    {
+      "id": "sys-pain-de-mie",
+      "name": "Pain de Mie",
+      "tags": ["preferment", "sandwich"],
+      "notes": "Bake in a lidded pullman tin for square slices.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "preferment",
+        "totalDoughWeight": 900,
+        "hydration": 62,
+        "salt": 2,
+        "prefermentPercent": 25,
+        "prefermentHydration": 65,
+        "prefermentYeast": 0.3,
+        "enrichment": { "fatPercent": 8, "sugarPercent": 6 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-focaccia",
+      "name": "Focaccia",
+      "tags": ["classic", "flatbread"],
+      "notes": "Dimple with oiled fingers and finish with flaky salt.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 80,
+        "salt": 2.2,
+        "yeast": 1,
+        "enrichment": { "fatPercent": 6 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-pizza-napoletana",
+      "name": "Pizza Napoletana",
+      "tags": ["classic", "pizza"],
+      "notes": "Low yeast, long cold ferment. 250 g dough balls.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 150,
+        "hydration": 62,
+        "salt": 2.8,
+        "yeast": 0.2,
+        "loaves": 4
+      }
+    },
+    {
+      "id": "sys-sandwich-loaf",
+      "name": "Soft Sandwich Loaf",
+      "tags": ["classic", "sandwich"],
+      "notes": "Milk and butter keep it soft for days.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 65,
+        "salt": 2,
+        "yeast": 1.2,
+        "enrichment": { "fatPercent": 6, "sugarPercent": 5 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-brioche",
+      "name": "Brioche",
+      "tags": ["classic", "enriched"],
+      "notes": "Butter goes in last, cold, a piece at a time. Chill before shaping.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 15,
+        "salt": 2,
+        "yeast": 1.5,
+        "enrichment": { "fatPercent": 50, "sugarPercent": 12, "eggCount": 5 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-challah",
+      "name": "Challah",
+      "tags": ["classic", "enriched"],
+      "notes": "Braid, egg wash twice, and bake until deeply bronzed.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 35,
+        "salt": 2,
+        "yeast": 1.4,
+        "enrichment": { "fatPercent": 12, "sugarPercent": 10, "eggCount": 3 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-cinnamon-rolls",
+      "name": "Cinnamon Rolls",
+      "tags": ["classic", "sweet"],
+      "notes": "Proof until puffy, not doubled, or the spiral unwinds.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 45,
+        "salt": 1.8,
+        "yeast": 1.5,
+        "enrichment": { "fatPercent": 20, "sugarPercent": 12, "eggCount": 2 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-bagels",
+      "name": "Bagels",
+      "tags": ["classic", "boiled"],
+      "notes": "Stiff dough. Cold proof overnight, then boil 45 s a side.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 57,
+        "salt": 2,
+        "yeast": 0.8,
+        "enrichment": { "sugarPercent": 4 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-pretzels",
+      "name": "Soft Pretzels",
+      "tags": ["classic", "boiled"],
+      "notes": "Dip in a baking-soda bath for the classic crust and colour.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 58,
+        "salt": 2,
+        "yeast": 1,
+        "enrichment": { "fatPercent": 5, "sugarPercent": 2 },
+        "loaves": 1
+      }
+    },
+    {
+      "id": "sys-naan",
+      "name": "Naan",
+      "tags": ["classic", "flatbread"],
+      "notes": "Yoghurt in the dough, cooked hot and fast in a dry pan.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "input": {
+        "style": "classic",
+        "flourWeight": 500,
+        "hydration": 55,
+        "salt": 2,
+        "yeast": 1,
+        "enrichment": { "fatPercent": 10, "sugarPercent": 3, "eggCount": 1 },
+        "loaves": 1
+      }
+    }
+  ]
+}

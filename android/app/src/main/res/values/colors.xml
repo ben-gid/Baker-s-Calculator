@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#C8E6FF</color>
+    <!-- LightPalette.surface — the window behind the splash and behind Flutter -->
+    <color name="launch_background">#FAFAFA</color>
 </resources>
