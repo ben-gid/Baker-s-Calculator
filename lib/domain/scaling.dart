@@ -15,7 +15,7 @@ RecipeInput scaleToTotalWeight(RecipeInput input, double targetGrams) {
   if (targetGrams <= 0) return input;
   final loaves = input.loaves < 1 ? 1 : input.loaves;
 
-  if (!input.style.isForward) {
+  if (!input.solvesForward) {
     return input.copyWith(totalDoughWeight: targetGrams / loaves);
   }
 
@@ -36,7 +36,7 @@ RecipeInput scaleToTotalFlour(RecipeInput input, double flourGrams) {
   if (flourGrams <= 0) return input;
   final loaves = input.loaves < 1 ? 1 : input.loaves;
 
-  if (input.style.isForward) {
+  if (input.solvesForward) {
     return input.copyWith(flourWeight: flourGrams / loaves);
   }
 

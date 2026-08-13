@@ -168,7 +168,20 @@ class _DoughCard extends ConsumerWidget {
     return SectionCard(
       title: 'Dough',
       children: [
-        if (input.style.isForward)
+        Padding(
+          padding: const EdgeInsets.only(bottom: Insets.md),
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: true, label: Text('Flour weight')),
+              ButtonSegment(value: false, label: Text('Dough weight')),
+            ],
+            selected: {input.solvesForward},
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) =>
+                controller.setByFlourWeight(selection.first),
+          ),
+        ),
+        if (input.solvesForward)
           NumberField(
             label: 'Flour weight',
             suffix: 'g',
