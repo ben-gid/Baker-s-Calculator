@@ -132,6 +132,7 @@ class Enrichment {
 class RecipeInput {
   const RecipeInput({
     this.style = DoughStyle.sourdough,
+    this.byFlourWeight,
     this.flourWeight,
     this.totalDoughWeight,
     this.hydration = 70,
@@ -150,10 +151,18 @@ class RecipeInput {
 
   final DoughStyle style;
 
-  /// Total flour, in grams. Used by [DoughStyle.classic] only.
+  /// Overrides which weight the baker is typing, independent of [style]: true
+  /// solves from [flourWeight], false solves from [totalDoughWeight]. Null
+  /// means "use the style's own default" — see [solvesForward] — so imported
+  /// JSON and every existing fixture that never set this keep behaving exactly
+  /// as before.
+  final bool? byFlourWeight;
+
+  /// Total flour, in grams. Read when [solvesForward] is true.
   final double? flourWeight;
 
-  /// Finished dough weight in grams, for one loaf. Used by the inverse styles.
+  /// Finished dough weight in grams, for one loaf. Read when [solvesForward]
+  /// is false.
   final double? totalDoughWeight;
 
   /// Water as a percentage of the DOUGH's flour — the flour you weigh into the
@@ -181,10 +190,16 @@ class RecipeInput {
 
   Enrichment get enrichmentOrEmpty => enrichment ?? const Enrichment();
 
+  /// True when [flourWeight] is the input to solve from, false when
+  /// [totalDoughWeight] is. [byFlourWeight] overrides this per-recipe; absent,
+  /// it falls back to the style's own natural direction.
+  bool get solvesForward => byFlourWeight ?? style.isForward;
+
   /// Passing null to any nullable field clears it; omitting it keeps what is
   /// already there. See [_unset].
   RecipeInput copyWith({
     DoughStyle? style,
+    Object? byFlourWeight = _unset,
     Object? flourWeight = _unset,
     Object? totalDoughWeight = _unset,
     Object? hydration = _unset,
@@ -201,6 +216,9 @@ class RecipeInput {
     int? loaves,
   }) => RecipeInput(
     style: style ?? this.style,
+    byFlourWeight: identical(byFlourWeight, _unset)
+        ? this.byFlourWeight
+        : byFlourWeight as bool?,
     flourWeight: _or(flourWeight, this.flourWeight),
     totalDoughWeight: _or(totalDoughWeight, this.totalDoughWeight),
     hydration: _or(hydration, this.hydration),
@@ -221,6 +239,7 @@ class RecipeInput {
 
   Map<String, dynamic> toJson() => {
     'style': style.name,
+    if (byFlourWeight != null) 'byFlourWeight': byFlourWeight,
     if (flourWeight != null) 'flourWeight': flourWeight,
     if (totalDoughWeight != null) 'totalDoughWeight': totalDoughWeight,
     if (hydration != null) 'hydration': hydration,
@@ -246,6 +265,7 @@ class RecipeInput {
     try {
       return RecipeInput(
         style: DoughStyle.fromName(json['style'] as String),
+        byFlourWeight: json['byFlourWeight'] as bool?,
         flourWeight: num_('flourWeight'),
         totalDoughWeight: num_('totalDoughWeight'),
         hydration: num_('hydration') ?? 70,

@@ -17,14 +17,36 @@ abstract final class Insets {
   static const double page = 16;
   static const double pageWide = 32;
 
-  /// Room left under scrolling content so it clears the bottom nav bar.
-  static const double scrollBottom = 96;
+  /// Room left under scrolling content. Small, because nothing floats over it:
+  /// the nav bar and the action bar both take their own space in the scaffold,
+  /// so this is breathing room at the end of a list, not clearance.
+  static const double scrollBottom = 24;
 }
 
+/// Corner radii. Generous and soft: a filled surface with a large radius is the
+/// container language, the way a grouped iOS list or a Material 3 filled card
+/// reads. Nothing in the app has a square corner.
+///
+/// The three steps are proportional to what they wrap — a panel holding several
+/// controls is rounder than a control, and anything that reads as a control in
+/// its own right is a full [pill].
 abstract final class Radii {
-  static const double card = 16;
-  static const double field = 12;
-  static const double chip = 8;
+  static const double card = 20;
+  static const double field = 14;
+  static const double chip = 12;
+
+  /// Fully round. Applied to a fixed-height box, so any value past half the
+  /// height gives the same shape — [BorderRadius.circular] clamps for us.
+  static const double pill = 999;
+}
+
+/// Border widths. Containers are told apart by their **fill**, not by a rule:
+/// panels sit on a slightly darker page, and fields on a slightly darker panel.
+/// A border here is the exception — a hairline in `outlineVariant` for a
+/// divider, or [focus] in `primary` for the one control that has the keyboard.
+abstract final class Borders {
+  static const double hair = 1;
+  static const double focus = 2;
 }
 
 /// Minimum tap target. Android asks for 48, iOS for 44 — take the larger.
@@ -39,8 +61,7 @@ double pageMargin(double width) =>
     width >= Breakpoints.tablet ? Insets.pageWide : Insets.page;
 
 /// Padding for a full screen of scrolling content: a margin that widens on
-/// large screens, and enough room at the bottom to clear the nav bar and a
-/// floating action button. Screens with neither pass a smaller [bottom].
+/// large screens, and a little room at the end.
 EdgeInsets pagePadding(
   BuildContext context, {
   double top = Insets.lg,

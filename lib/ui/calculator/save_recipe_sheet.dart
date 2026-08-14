@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/spacing.dart';
+import '../widgets/panel.dart';
 import '../../domain/models/recipe_input.dart';
 import '../../state/providers.dart';
 
@@ -64,13 +65,18 @@ class _SaveSheetState extends State<_SaveSheet> {
         children: [
           Text('Save recipe', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: Insets.lg),
+          const SectionLabel('Name'),
+          const SizedBox(height: Insets.xs),
           TextField(
+            // The label sits above the box like every other field, so there is
+            // no text inside this one for a test to find it by.
+            key: const Key('save-recipe-name'),
             controller: _controller,
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(labelText: 'Name'),
+            decoration: const InputDecoration(),
           ),
           const SizedBox(height: Insets.xl),
           Row(

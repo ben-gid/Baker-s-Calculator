@@ -312,4 +312,61 @@ void main() {
       expect(recipe.totalWeight, closeTo(900, 1e-9));
     });
   });
+
+  group('either weight can drive the calculation', () {
+    /// Flipping [RecipeInput.byFlourWeight] must be a round trip: feeding the
+    /// other function's output back in as the new input reproduces the same
+    /// recipe, for every style — not just the one direction each style
+    /// defaults to.
+    void checkRoundTrip(String name, RecipeInput naturallyInverse) {
+      test('$name: flour weight solved from dough weight, and back', () {
+        final inverse = calculate(naturallyInverse);
+        final doughFlour = inverse.groups
+            .firstWhere((g) => g.name == 'Dough')
+            .ingredients
+            .firstWhere((i) => i.name == 'Flour')
+            .grams;
+
+        final forward = calculate(
+          naturallyInverse.copyWith(
+            byFlourWeight: true,
+            flourWeight: doughFlour,
+          ),
+        );
+        expect(forward.totalWeight, closeTo(inverse.totalWeight, 1e-6));
+        expect(forward.totalFlour, closeTo(inverse.totalFlour, 1e-6));
+      });
+    }
+
+    checkRoundTrip('sourdough', _sourdough);
+    checkRoundTrip('preferment', _preferment);
+
+    test('classic: dough weight solved from flour weight, and back', () {
+      final forward = calculate(_classic);
+
+      final inverse = calculate(
+        _classic.copyWith(
+          byFlourWeight: false,
+          totalDoughWeight: forward.totalWeight,
+        ),
+      );
+      expect(inverse.totalFlour, closeTo(forward.totalFlour, 1e-6));
+      expect(inverse.totalWeight, closeTo(forward.totalWeight, 1e-6));
+    });
+
+    test('classic inverse still takes egg weight off before dividing', () {
+      final withEggs = _classic.copyWith(
+        enrichment: const Enrichment(eggCount: 2),
+      );
+      final forward = calculate(withEggs);
+
+      final inverse = calculate(
+        withEggs.copyWith(
+          byFlourWeight: false,
+          totalDoughWeight: forward.totalWeight,
+        ),
+      );
+      expect(inverse.totalFlour, closeTo(forward.totalFlour, 1e-6));
+    });
+  });
 }

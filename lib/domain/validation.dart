@@ -107,9 +107,18 @@ List<InputIssue> validate(RecipeInput input) {
     }
   }
 
+  if (input.solvesForward) {
+    required(input.flourWeight, RecipeField.flourWeight, 'Flour weight');
+  } else {
+    required(
+      input.totalDoughWeight,
+      RecipeField.totalDoughWeight,
+      'Dough weight',
+    );
+  }
+
   switch (input.style) {
     case DoughStyle.classic:
-      required(input.flourWeight, RecipeField.flourWeight, 'Flour weight');
       required(input.yeast, RecipeField.yeast, 'Yeast');
       range(
         input.yeast,
@@ -121,11 +130,6 @@ List<InputIssue> validate(RecipeInput input) {
         warning: 'Over 3% yeast ferments very fast and can taste boozy',
       );
     case DoughStyle.sourdough:
-      required(
-        input.totalDoughWeight,
-        RecipeField.totalDoughWeight,
-        'Dough weight',
-      );
       required(input.levainPercent, RecipeField.levainPercent, 'Levain');
       required(
         input.levainHydration,
@@ -149,11 +153,6 @@ List<InputIssue> validate(RecipeInput input) {
         label: 'Levain hydration',
       );
     case DoughStyle.preferment:
-      required(
-        input.totalDoughWeight,
-        RecipeField.totalDoughWeight,
-        'Dough weight',
-      );
       required(
         input.prefermentPercent,
         RecipeField.prefermentPercent,
@@ -308,10 +307,10 @@ List<InputIssue> validate(RecipeInput input) {
     issues.add(const InputIssue.error(RecipeField.loaves, 'Make at least one'));
   }
 
-  // The inverse styles divide (doughWeight - eggWeight) by the denominator, so
+  // Solving inverse divides (doughWeight - eggWeight) by the denominator, so
   // heavy enrichment on a small dough can drive the flour weight to zero or
   // below. Catch it here rather than showing negative grams.
-  if (!input.style.isForward && input.totalDoughWeight != null) {
+  if (!input.solvesForward && input.totalDoughWeight != null) {
     final remaining =
         input.totalDoughWeight! - input.enrichmentOrEmpty.eggGrams;
     if (remaining <= 0) {

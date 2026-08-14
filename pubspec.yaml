@@ -81,6 +81,12 @@ flutter:
     - assets/recipes/
 
   fonts:
+    # Headings and the big numbers. Variable font, weights selected at runtime
+    # with FontVariation in core/theme/app_theme.dart, not here. Carries the
+    # display end of the type scale at 800, where Plex Sans has no real cut.
+    - family: PlusJakartaSans
+      fonts:
+        - asset: "assets/fonts/PlusJakartaSans[wght].ttf"
     # UI text. Variable font: one file covers every weight, selected at runtime
     # with FontVariation in core/theme/app_theme.dart, not here.
     - family: IBMPlexSans

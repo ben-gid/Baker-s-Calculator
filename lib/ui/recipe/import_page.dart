@@ -7,7 +7,8 @@ import '../../data/recipe_share.dart';
 import '../../domain/calculator.dart';
 import '../../state/providers.dart';
 import '../widgets/recipe_view.dart';
-import '../widgets/section_card.dart';
+import '../widgets/action_bar.dart';
+import '../widgets/panel.dart';
 
 /// Takes a shared link or code and previews it before anything is saved.
 ///
@@ -85,20 +86,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Import a recipe')),
-      floatingActionButton: preview == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _save,
-              icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('Save to my recipes'),
-            ),
+      bottomNavigationBar: ActionBar(
+        label: 'Save to my recipes',
+        icon: Icons.bookmark_add_outlined,
+        onPressed: preview == null ? null : _save,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: pagePadding(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SectionCard(
+              Panel(
                 title: 'Paste the link',
                 note:
                     'A shared recipe link, or just the code from the end of it.',

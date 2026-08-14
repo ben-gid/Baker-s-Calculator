@@ -79,20 +79,42 @@ void main() {
         );
       });
 
-      // The totals card and the dough-temp result box are both painted
-      // `proofContainer`, and between them they land four different
-      // foregrounds on it. A saturated container fails half of these, which is
-      // exactly how a brand colour quietly breaks a warning message.
-      test('everything drawn on proofContainer clears AA', () {
-        final onContainer = {
-          'onSurface (the total itself)': colors.onSurface,
-          'onProofContainer (muted labels)': baking.onProofContainer,
-          'warn (advisory text and icon)': baking.warn,
-          'proof (the card border)': baking.proof,
-        };
-        for (final fg in onContainer.entries) {
-          expectAtLeast(fg.key, fg.value, baking.proofContainer, 4.5);
-        }
+      // The totals block is a warm tonal fill, and only two foregrounds are
+      // drawn on it. Both are their own tokens because `onSurface` and
+      // `onSurfaceVariant` are tuned against the page, not against amber, and
+      // miss AA on it. `warn` and `proof` are deliberately kept off the block —
+      // the dough-temp advisory sits below it. A third foreground here needs a
+      // token and a line in this test, not a copyWith at the call site.
+      test('both foregrounds on the proofContainer fill clear AA', () {
+        expectAtLeast(
+          'onProofContainer (the total)',
+          baking.onProofContainer,
+          baking.proofContainer,
+          4.5,
+        );
+        expectAtLeast(
+          'onProofContainerMuted (the labels)',
+          baking.onProofContainerMuted,
+          baking.proofContainer,
+          4.5,
+        );
+      });
+
+      // Every tonal container is a pale tint in light and a deep one in dark.
+      // A pair that came out the same in both modes would mean one of them was
+      // never designed against its own surface.
+      test('tonal containers differ between the two modes', () {
+        final other = buildTheme(
+          brightness == Brightness.light ? Brightness.dark : Brightness.light,
+        );
+        expect(
+          colors.primaryContainer,
+          isNot(other.colorScheme.primaryContainer),
+        );
+        expect(
+          baking.proofContainer,
+          isNot(other.extension<BakingColors>()!.proofContainer),
+        );
       });
 
       // 1.4.11: the boundary of a control the baker can actually operate —
@@ -105,20 +127,61 @@ void main() {
         }
       });
 
+      // pubspec registers Plex Mono at 400/500/600/700 only. The display scale
+      // uses 800, which is fine for the variable faces but has no file behind
+      // it in mono — so `numeric()` clamps rather than the text theme being
+      // held back. This asserts the clamp, since that is what actually protects
+      // the numbers now: every style is fed through it, including the heaviest.
       test('numbers are set in the mono face at a weight that ships', () {
         expect(numericFont, 'IBMPlexMono');
-        // pubspec registers 400/500/600/700; the text theme must not ask for a
-        // weight with no file behind it, or Flutter synthesises a fake one.
-        final weights = [
+        for (final style in [
+          theme.textTheme.displaySmall,
+          theme.textTheme.headlineMedium,
+          theme.textTheme.headlineSmall,
+          theme.textTheme.titleLarge,
+          theme.textTheme.titleMedium,
+          theme.textTheme.titleSmall,
           theme.textTheme.bodyLarge,
           theme.textTheme.bodySmall,
-          theme.textTheme.titleSmall,
-          theme.textTheme.titleLarge,
-          theme.textTheme.labelSmall,
           theme.textTheme.labelMedium,
+          theme.textTheme.labelSmall,
+        ]) {
+          final measured = numeric(style);
+          expect(measured.fontFamily, numericFont);
+          expect(measured.fontFeatures, tabularFigures);
+          expect(
+            measured.fontWeight!.value,
+            isIn([400, 500, 600, 700]),
+            reason: 'mono has no file for w${measured.fontWeight!.value}',
+          );
+          // The variation has to agree with the weight, or a variable fallback
+          // would render a different cut from the one asked for.
+          expect(
+            measured.fontVariations!.single.value,
+            measured.fontWeight!.value.toDouble(),
+          );
+        }
+      });
+
+      // Two faces, and each is asked only for weights it can really draw.
+      test('the display scale uses the geometric face', () {
+        for (final style in [
+          theme.textTheme.displaySmall,
+          theme.textTheme.headlineMedium,
           theme.textTheme.headlineSmall,
-        ].map((s) => s!.fontWeight!.value);
-        expect(weights, everyElement(isIn([400, 500, 600, 700])));
+          theme.textTheme.titleLarge,
+          theme.textTheme.titleMedium,
+        ]) {
+          expect(style!.fontFamily, displayFont);
+        }
+        // Body and labels take the text face `ThemeData.fontFamily` applies.
+        for (final style in [
+          theme.textTheme.bodyLarge,
+          theme.textTheme.bodySmall,
+          theme.textTheme.labelMedium,
+        ]) {
+          expect(style!.fontFamily, 'IBMPlexSans');
+        }
       });
     });
   }

@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/spacing.dart';
+import 'widgets/app_nav_bar.dart';
+
 /// The three tabs. Kept in one list so the bottom bar and the wide-screen rail
 /// can never drift apart.
-class NavTab {
-  const NavTab({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-  });
-
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-}
-
 const navTabs = [
   NavTab(
     label: 'Calculate',
@@ -49,26 +40,18 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 700;
+    final isWide = MediaQuery.sizeOf(context).width >= Breakpoints.tablet;
 
     if (isWide) {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
+            AppNavBar(
+              tabs: navTabs,
               selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: _goToBranch,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final tab in navTabs)
-                  NavigationRailDestination(
-                    icon: Icon(tab.icon),
-                    selectedIcon: Icon(tab.selectedIcon),
-                    label: Text(tab.label),
-                  ),
-              ],
+              onSelected: _goToBranch,
+              vertical: true,
             ),
-            const VerticalDivider(width: 1),
             Expanded(child: navigationShell),
           ],
         ),
@@ -77,17 +60,10 @@ class AppShell extends StatelessWidget {
 
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: AppNavBar(
+        tabs: navTabs,
         selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _goToBranch,
-        destinations: [
-          for (final tab in navTabs)
-            NavigationDestination(
-              icon: Icon(tab.icon),
-              selectedIcon: Icon(tab.selectedIcon),
-              label: tab.label,
-            ),
-        ],
+        onSelected: _goToBranch,
       ),
     );
   }

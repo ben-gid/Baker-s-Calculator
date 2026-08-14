@@ -13,7 +13,8 @@ import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/recipe_view.dart';
-import '../widgets/section_card.dart';
+import '../widgets/action_bar.dart';
+import '../widgets/panel.dart';
 
 class RecipePage extends ConsumerWidget {
   const RecipePage({super.key, required this.id});
@@ -69,13 +70,13 @@ class RecipePage extends ConsumerWidget {
           const SizedBox(width: Insets.xs),
         ],
       ),
-      floatingActionButton: blocked
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => context.push('/recipe/${recipe.id}/plan'),
-              icon: const Icon(Icons.schedule),
-              label: const Text('Plan this bake'),
-            ),
+      bottomNavigationBar: ActionBar(
+        label: 'Plan this bake',
+        icon: Icons.schedule,
+        onPressed: blocked
+            ? null
+            : () => context.push('/recipe/${recipe.id}/plan'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: pagePadding(context),
@@ -88,7 +89,7 @@ class RecipePage extends ConsumerWidget {
                   child: _BuiltInBanner(recipe: recipe),
                 ),
               if (recipe.notes != null && recipe.notes!.isNotEmpty) ...[
-                SectionCard(title: 'Notes', children: [Text(recipe.notes!)]),
+                Panel(title: 'Notes', children: [Text(recipe.notes!)]),
                 const SizedBox(height: Insets.md),
               ],
               if (blocked)

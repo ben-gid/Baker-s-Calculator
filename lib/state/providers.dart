@@ -115,6 +115,20 @@ class CalculatorController extends Notifier<RecipeInput> {
     };
   }
 
+  /// Flips which weight drives the recipe, independent of style. Mirrors
+  /// [setStyle]: fills in a default for the field the new mode needs if the
+  /// baker has never typed one, and leaves the other field exactly as typed
+  /// so flipping back and forth loses nothing.
+  void setByFlourWeight(bool value) => state = value
+      ? state.copyWith(
+          byFlourWeight: value,
+          flourWeight: state.flourWeight ?? 500,
+        )
+      : state.copyWith(
+          byFlourWeight: value,
+          totalDoughWeight: state.totalDoughWeight ?? 900,
+        );
+
   void reset() => state = startingPoint;
 }
 
