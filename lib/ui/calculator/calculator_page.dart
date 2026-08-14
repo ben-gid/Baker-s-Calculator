@@ -8,10 +8,12 @@ import '../../domain/models/dough_style.dart';
 import '../../domain/models/recipe_input.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
+import '../widgets/action_bar.dart';
+import '../widgets/panel.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/number_field.dart';
 import '../widgets/recipe_view.dart';
-import '../widgets/section_card.dart';
+import '../widgets/style_toggle.dart';
 import 'save_recipe_sheet.dart';
 
 /// One scrolling screen: pick a style, fill in what it needs, and the recipe
@@ -52,13 +54,15 @@ class CalculatorPage extends ConsumerWidget {
           const SizedBox(width: Insets.xs),
         ],
       ),
-      floatingActionButton: recipe == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => showSaveRecipeSheet(context, ref, input),
-              icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('Save'),
-            ),
+      // The bar stays put and greys out while the recipe is blocked, rather
+      // than vanishing and shifting the form under the baker's thumb.
+      bottomNavigationBar: ActionBar(
+        label: 'Save',
+        icon: Icons.bookmark_add_outlined,
+        onPressed: recipe == null
+            ? null
+            : () => showSaveRecipeSheet(context, ref, input),
+      ),
       body: SafeArea(
         child: width >= Breakpoints.tablet
             // Wide screens put the live result beside the form so the numbers
@@ -135,14 +139,13 @@ class _StyleSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<DoughStyle>(
-          segments: [
+        StyleToggle<DoughStyle>(
+          options: [
             for (final option in DoughStyle.values)
-              ButtonSegment(value: option, label: Text(option.label)),
+              ToggleOption(value: option, label: option.label),
           ],
-          selected: {style},
-          showSelectedIcon: false,
-          onSelectionChanged: (selection) => onChanged(selection.first),
+          selected: style,
+          onChanged: onChanged,
         ),
         const SizedBox(height: Insets.sm),
         Text(
@@ -165,20 +168,18 @@ class _DoughCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(calculatorProvider.notifier);
 
-    return SectionCard(
+    return Panel(
       title: 'Dough',
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: Insets.md),
-          child: SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true, label: Text('Flour weight')),
-              ButtonSegment(value: false, label: Text('Dough weight')),
+          child: StyleToggle<bool>(
+            options: const [
+              ToggleOption(value: true, label: 'Flour weight'),
+              ToggleOption(value: false, label: 'Dough weight'),
             ],
-            selected: {input.solvesForward},
-            showSelectedIcon: false,
-            onSelectionChanged: (selection) =>
-                controller.setByFlourWeight(selection.first),
+            selected: input.solvesForward,
+            onChanged: controller.setByFlourWeight,
           ),
         ),
         if (input.solvesForward)
@@ -335,7 +336,7 @@ class _FlourBlendCard extends ConsumerWidget {
     void setBlend(List<FlourPart> next) =>
         controller.change((i) => i.copyWith(flourBlend: next));
 
-    return CollapsibleCard(
+    return DisclosurePanel(
       title: 'Flour blend',
       subtitle: 'Mix two or more flours',
       initiallyExpanded: blend.isNotEmpty,
@@ -358,6 +359,7 @@ class _FlourBlendCard extends ConsumerWidget {
                   flex: 3,
                   child: NameField(
                     label: 'Flour ${index + 1}',
+                    showLabel: false,
                     value: blend[index].name,
                     onChanged: (name) => setBlend([
                       for (var i = 0; i < blend.length; i++)
@@ -449,7 +451,7 @@ class _EnrichmentCard extends ConsumerWidget {
       (i) => i.copyWith(enrichment: next.isEmpty ? null : next),
     );
 
-    return CollapsibleCard(
+    return DisclosurePanel(
       title: 'Enrich',
       subtitle: 'Fat, sugar and eggs',
       initiallyExpanded: active.isNotEmpty,
@@ -526,7 +528,7 @@ class _MixInsCard extends ConsumerWidget {
     void setMixIns(List<MixIn> next) =>
         controller.change((i) => i.copyWith(mixIns: next));
 
-    return CollapsibleCard(
+    return DisclosurePanel(
       title: 'Mix-ins',
       subtitle: 'Seeds, nuts, cheese, olives',
       initiallyExpanded: mixIns.isNotEmpty,
@@ -541,6 +543,7 @@ class _MixInsCard extends ConsumerWidget {
                   flex: 3,
                   child: NameField(
                     label: 'Mix-in ${index + 1}',
+                    showLabel: false,
                     value: mixIns[index].name,
                     onChanged: (name) => setMixIns([
                       for (var i = 0; i < mixIns.length; i++)
@@ -608,18 +611,19 @@ class _BatchCard extends ConsumerWidget {
     final controller = ref.read(calculatorProvider.notifier);
     final settings = ref.watch(settingsProvider);
 
-    return SectionCard(
+    return Panel(
       title: 'Batch',
-      trailing: SegmentedButton<MassUnit>(
-        segments: [
-          for (final unit in MassUnit.values)
-            ButtonSegment(value: unit, label: Text(unit.symbol)),
-        ],
-        selected: {settings.unit},
-        showSelectedIcon: false,
-        style: SegmentedButton.styleFrom(visualDensity: VisualDensity.compact),
-        onSelectionChanged: (selection) =>
-            ref.read(settingsProvider.notifier).setUnit(selection.first),
+      trailing: SizedBox(
+        width: 116,
+        child: StyleToggle<MassUnit>(
+          compact: true,
+          options: [
+            for (final unit in MassUnit.values)
+              ToggleOption(value: unit, label: unit.symbol),
+          ],
+          selected: settings.unit,
+          onChanged: ref.read(settingsProvider.notifier).setUnit,
+        ),
       ),
       children: [
         Row(
@@ -646,10 +650,7 @@ class _BatchCard extends ConsumerWidget {
               child: Text(
                 '${input.loaves}',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontFeatures: tabularFigures,
-                  fontFamily: numericFont,
-                ),
+                style: numeric(Theme.of(context).textTheme.titleLarge),
               ),
             ),
             IconButton.outlined(
@@ -677,7 +678,7 @@ class _BlockedResult extends StatelessWidget {
     final errors = issues
         .where((i) => i.severity == IssueSeverity.error)
         .toList();
-    return SectionCard(
+    return Panel(
       title: 'Recipe',
       children: [
         EmptyState(

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/formatting.dart';
 import '../../core/theme/spacing.dart';
 import '../../state/providers.dart';
-import '../widgets/section_card.dart';
+import '../widgets/panel.dart';
+import '../widgets/style_toggle.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -20,17 +21,16 @@ class SettingsPage extends ConsumerWidget {
         child: ListView(
           padding: pagePadding(context, bottom: Insets.xl),
           children: [
-            SectionCard(
+            Panel(
               title: 'Units',
               children: [
-                SegmentedButton<MassUnit>(
-                  segments: [
+                StyleToggle<MassUnit>(
+                  options: [
                     for (final unit in MassUnit.values)
-                      ButtonSegment(value: unit, label: Text(unit.label)),
+                      ToggleOption(value: unit, label: unit.label),
                   ],
-                  selected: {settings.unit},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) => controller.setUnit(s.first),
+                  selected: settings.unit,
+                  onChanged: controller.setUnit,
                 ),
                 const SizedBox(height: Insets.md),
                 SwitchListTile(
@@ -45,23 +45,22 @@ class SettingsPage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Insets.md),
-            SectionCard(
+            Panel(
               title: 'Appearance',
               children: [
-                SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                    ButtonSegment(value: ThemeMode.system, label: Text('Auto')),
-                    ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                StyleToggle<ThemeMode>(
+                  options: const [
+                    ToggleOption(value: ThemeMode.light, label: 'Light'),
+                    ToggleOption(value: ThemeMode.system, label: 'Auto'),
+                    ToggleOption(value: ThemeMode.dark, label: 'Dark'),
                   ],
-                  selected: {settings.themeMode},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) => controller.setThemeMode(s.first),
+                  selected: settings.themeMode,
+                  onChanged: controller.setThemeMode,
                 ),
               ],
             ),
             const SizedBox(height: Insets.md),
-            const SectionCard(
+            const Panel(
               title: 'About',
               children: [
                 Text(

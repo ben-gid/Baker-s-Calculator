@@ -67,6 +67,8 @@ class ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Tinted rather than ruled: `errorContainer` is the seeded tonal pair, and
+    // a soft red block is as loud as this needs to be.
     return Container(
       margin: const EdgeInsets.only(bottom: Insets.lg),
       padding: const EdgeInsets.fromLTRB(

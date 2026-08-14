@@ -9,7 +9,8 @@ import '../../data/notification_service.dart';
 import '../../domain/timeline.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/section_card.dart';
+import '../widgets/action_bar.dart';
+import '../widgets/panel.dart';
 
 /// A bake plan: every step laid end to end from a start time, with reminders.
 ///
@@ -58,15 +59,10 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
 
     return Scaffold(
       appBar: AppBar(title: Text('Plan: ${recipe.name}')),
-      floatingActionButton: FloatingActionButton.extended(
+      bottomNavigationBar: ActionBar(
+        label: _scheduling ? 'Setting reminders' : 'Start bake',
+        icon: Icons.notifications_active_outlined,
         onPressed: _scheduling ? null : () => _startBake(recipe.name, steps),
-        icon: _scheduling
-            ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.notifications_active_outlined),
-        label: Text(_scheduling ? 'Setting reminders' : 'Start bake'),
       ),
       body: SafeArea(
         child: ListView(
@@ -139,7 +135,7 @@ class _StartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SectionCard(
+    return Panel(
       title: 'Timing',
       note: 'Total ${formatDuration(total)} from first mix to out of the oven.',
       children: [
@@ -198,7 +194,6 @@ class _TimeRow extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: () => _pick(context),
-      borderRadius: BorderRadius.circular(Radii.chip),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Insets.sm),
         child: Row(
@@ -206,10 +201,7 @@ class _TimeRow extends StatelessWidget {
             Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
             Text(
               '${_dayLabel(value)} ${formatClock(value)}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontFeatures: tabularFigures,
-                fontFamily: numericFont,
-              ),
+              style: numeric(theme.textTheme.titleMedium),
             ),
             const SizedBox(width: Insets.sm),
             Icon(
@@ -289,10 +281,7 @@ class _StepTile extends StatelessWidget {
               children: [
                 Text(
                   formatClock(scheduled.startsAt),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontFeatures: tabularFigures,
-                    fontFamily: numericFont,
-                  ),
+                  style: numeric(theme.textTheme.labelMedium),
                 ),
                 Expanded(
                   child: Container(
@@ -312,7 +301,6 @@ class _StepTile extends StatelessWidget {
               child: Card(
                 child: InkWell(
                   onTap: () => _editDuration(context),
-                  borderRadius: BorderRadius.circular(Radii.card),
                   child: Padding(
                     padding: const EdgeInsets.all(Insets.lg),
                     child: Column(
@@ -339,10 +327,7 @@ class _StepTile extends StatelessWidget {
                               ),
                             Text(
                               formatDuration(step.duration),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontFeatures: tabularFigures,
-                                fontFamily: numericFont,
-                              ),
+                              style: numeric(theme.textTheme.labelMedium),
                             ),
                           ],
                         ),

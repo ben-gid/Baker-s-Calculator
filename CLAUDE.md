@@ -113,7 +113,23 @@ refilled. Do not reintroduce `?? 0` in an `onChanged`.
 
 Do not reintroduce real I/O into widget tests. Long forms sit below the fold on
 the 375x812 test phone — use the `tapVisible` helper rather than bare `tap`,
-which only warns when it misses.
+which only warns when it misses. `ensureVisible` cannot reach an item a lazy
+`ListView` has not built yet; `scrollUntilVisible` can.
+
+`test/app_test.dart` defines four finders, and new tests should use them rather
+than reaching for widget types:
+
+- `fieldNamed('Hydration')` — the `TextField` inside a `NumberField`/`NameField`.
+  The label is a *sibling* of the box now, not inside its decoration, so
+  `find.widgetWithText(TextField, …)` does not reach it.
+- `actionBar('Save')` — the pinned primary action.
+- `sheetButton('Save')` — a button inside the modal sheet. Scoped, because the
+  sheet's confirm button and the `ActionBar` behind it carry the same word.
+- `openRecipesTab(tester)`.
+
+`NumberField` keeps a real `TextField` inside it rather than rebuilding on
+`EditableText` — that is what preserves text selection, context menus and
+autofill, and it is not worth trading away for a custom caret.
 
 ### Library mutations are serialised
 
@@ -125,45 +141,97 @@ the file read.
 
 ### Theme
 
-The palette is *instrument*, not artisan: near-black ink on cool paper with a
-single emerald accent, and saturation otherwise reserved for the two colours
-that warn (`warn` amber, `error` red). Brown and cream were tried and rejected —
-the app is a measuring tool, so it is dressed as one.
+The design is **soft and tonal**: filled surfaces, generous radii, no rules,
+no shadows and no `surfaceTint` anywhere. Containers are told apart by their
+**fill**, not by a border — the page is a slightly grey ground, a panel is the
+lighter surface sitting on it, and a field is a slightly darker fill inside the
+panel, the way a grouped iOS list or a Material 3 filled card works. That is why
+`surface` is `0xFFF2F2F7` and not white: panels are white and have to sit on
+something.
 
-The signature is `0xFF34D399`, and it is the **dark-mode** accent only. Light
-mode uses `0xFF047857` from the same family, because `34D399` measures 1.8:1 on
-paper and cannot carry text or a filled button there. Per-mode accent values are
-expected here, not a mistake to "fix" by unifying them.
+Radii come from [lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) —
+`card` 20, `field` 14, `chip` 12, and `pill` for anything that reads as a control
+in its own right. `Radii.pill` is 999 and relies on Flutter scaling a radius down
+to fit the box, so it works on any height. Spacing is 4/8 dp only, plus
+`pagePadding(context)`, which every full-screen scroll uses. `Borders` has just
+`hair` and `focus`: a border is the exception here, for a divider or for the one
+control holding the keyboard.
+
+Blue carries action and selection, a warm amber carries the result, and red and
+amber stay reserved for the two states that warn. Every accent has a *container*
+pair — a pale tint in light and a deep one in dark — because tonal containers are
+the point of this look: a filled block should belong to the surface it sits on
+rather than punch through it. `colorScheme.outline` is a mid grey used only where
+a control genuinely needs an edge; `outlineVariant` draws hairline dividers.
+
+Earlier looks that were built and rejected: warm artisan/terracotta (the user's
+call), an emerald "instrument" palette, and a hard-edged Bauhaus one with 2 dp
+ink rules and uppercase labels. Do not reintroduce any of them as a "fix" —
+in particular, do not put borders back on containers.
+
+`colorScheme.primary` and `BakingColors.proof` are deliberately the same blue:
+dough being ready *is* the brand, so "ready" and "accent" are one colour. They
+stay separate names so a future change can split them again.
+
+`BakingColors.proofContainer` is the totals block, and only **two** foregrounds
+are drawn on it — `onProofContainer` for the total and `onProofContainerMuted`
+for the labels. Both are their own tokens because `onSurface` and
+`onSurfaceVariant` are tuned against the page rather than against a warm amber
+fill and miss AA on it. `warn` and `proof` are deliberately kept *off* the block:
+the dough-temp advisory sits below it, where it reads better anyway. A third
+foreground needs a new token and a line in the contrast test, not a `copyWith`
+at the call site.
 
 Every colour comes from `Theme.of(context).colorScheme` or the `BakingColors`
 theme extension ([lib/core/theme/app_theme.dart](lib/core/theme/app_theme.dart)).
-No widget hardcodes a hex value. Spacing and radii come from
-[lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) — 4/8 dp only, plus
-`pagePadding(context)`, which every full-screen scroll uses.
+No widget hardcodes a hex value.
 
-`colorScheme.primary` and `BakingColors.proof` are deliberately the same
-emerald: dough being ready *is* the brand, so "ready" and "accent" are one
-colour. They stay separate names so a future change can split them again.
+Three faces. **Plus Jakarta Sans** (variable) is the display face for everything
+`titleMedium` and above, at 600–700 with slight negative tracking. **IBM Plex
+Sans** (variable) for body and labels. **IBM Plex Mono** for every gram,
+percentage and clock time — applied *only* through `numeric(style)`, which sets
+the family and `tabularFigures` together and clamps the weight into the
+400/500/600/700 that `pubspec.yaml` registers. Mono has no variable cut, so the
+clamp is what keeps the display scale free to go heavier without a number that
+borrows one of its styles being synthesised into a fake bold. Never reach for
+`numericFont` or `tabularFigures` directly.
 
-`BakingColors.proofContainer` is a **tint**, not the accent, and that is load
-bearing. The totals card and the dough-temp result box are both painted with
-it, and between them they put four foregrounds on it — the total, muted labels,
-advisory amber, and the card border. Painting it the saturated `34D399` was
-tried and drops `warn` to 2.6:1. Muted text on it must use `onProofContainer`;
-`onSurfaceVariant` fails in both modes.
-
-Two faces. **IBM Plex Sans** (bundled variable font) for everything, with
-weights selected via `FontVariation`, not `fontWeight` alone. **IBM Plex Mono**
-for every gram, percentage and clock time — applied as
-`fontFamily: numericFont, fontFeatures: tabularFigures` together, always both.
-Mono has no variable cut, so `pubspec.yaml` registers static 400/500/600/700;
-the text theme must not ask for a weight outside that set or Flutter
-synthesises a fake one.
+Nothing is uppercased. Headings are told from body text by size, weight and
+colour — `SectionLabel` in [lib/ui/widgets/panel.dart](lib/ui/widgets/panel.dart)
+is the section heading, and it sets `Semantics(header: true)` so the structure
+still reaches a screen reader.
 
 `test/theme_contrast_test.dart` re-measures every ratio the palette claims in
 its comments — AA (4.5:1) for text on all three surfaces, and 3:1 for
 `outline`, which draws the boundary of controls the baker operates.
-`outlineVariant` is exempt: card edges and dividers only.
+`outlineVariant` is exempt: panel dividers only. It also asserts the `numeric()`
+clamp, that the two faces land on the styles they are meant to, and that the
+tonal containers really do differ between the modes.
+
+### Material 3 is the substrate, not the look
+
+`MaterialApp`, `Scaffold`, routing, both platform pickers, `AlertDialog`,
+`showModalBottomSheet`, `SnackBar`, `ListTile`, `Chip` and `PopupMenuButton` all
+stay Material and are covered by `ThemeData` sub-themes. What was replaced is
+only the handful of widgets that *read* as Material, and each lives in
+[lib/ui/widgets/](lib/ui/widgets/):
+
+| Widget | Replaced |
+|---|---|
+| `Panel` / `DisclosurePanel` | `Card`, `ExpansionTile` |
+| `StyleToggle` | `SegmentedButton` (a sliding thumb instead of a checkmark) |
+| `AppNavBar` | `NavigationBar` / `NavigationRail` (the pill indicator) |
+| `ActionBar` | `FloatingActionButton.extended` |
+| `NumberField` / `NameField` | the floating-label `InputDecoration` |
+
+`Panel` is a `Material`, not a `DecoratedBox` — a `ListTile` or `InkWell` inside
+it paints ink on the nearest `Material` ancestor, so a plain coloured box both
+hides that ink and lets it bleed past the panel's rounded edge.
+
+Do **not** go further and drop `package:flutter/material.dart` for `WidgetsApp`:
+that means hand-rebuilding both pickers, dialogs, sheets, menus, nine snackbar
+sites, text-selection toolbars and autofill, for no visible gain over what is
+already here.
 
 ### Navigation
 

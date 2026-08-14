@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/spacing.dart';
 import 'calculator/calculator_page.dart';
 import 'library/library_page.dart';
 import 'recipe/import_page.dart';
@@ -73,12 +74,12 @@ GoRouter buildRouter() => GoRouter(
     appBar: AppBar(),
     body: Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(Insets.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('That link did not lead anywhere.'),
-            const SizedBox(height: 16),
+            const SizedBox(height: Insets.lg),
             FilledButton(
               onPressed: () => context.go('/'),
               child: const Text('Go to the calculator'),

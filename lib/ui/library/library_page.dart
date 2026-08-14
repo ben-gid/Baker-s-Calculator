@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/formatting.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../domain/calculator.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/panel.dart';
 
 class LibraryPage extends ConsumerWidget {
   const LibraryPage({super.key});
@@ -145,9 +147,9 @@ class _SectionHeading extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: Insets.sm),
     child: Row(
       children: [
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
+        SectionLabel(label),
         const SizedBox(width: Insets.sm),
-        Text('$count', style: Theme.of(context).textTheme.labelSmall),
+        Text('$count', style: numeric(Theme.of(context).textTheme.labelSmall)),
       ],
     ),
   );

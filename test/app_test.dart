@@ -17,6 +17,9 @@ import 'package:bakers_calculator/domain/models/recipe_input.dart';
 import 'package:bakers_calculator/domain/models/saved_recipe.dart';
 import 'package:bakers_calculator/domain/timeline.dart';
 import 'package:bakers_calculator/state/providers.dart';
+import 'package:bakers_calculator/ui/widgets/action_bar.dart';
+import 'package:bakers_calculator/ui/widgets/app_nav_bar.dart';
+import 'package:bakers_calculator/ui/widgets/number_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,6 +130,30 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The text box inside the [NumberField] or [NameField] carrying this label.
+  /// The label sits *above* the box now rather than floating inside its border,
+  /// so it is a sibling of the `TextField` and `find.widgetWithText` no longer
+  /// reaches it.
+  Finder fieldNamed(String label) => find.descendant(
+    of: find.byWidgetPredicate(
+      (w) =>
+          (w is NumberField && w.label == label) ||
+          (w is NameField && w.label == label),
+    ),
+    matching: find.byType(TextField),
+  );
+
+  /// The pinned primary action, which replaced the floating action button.
+  Finder actionBar(String label) =>
+      find.byWidgetPredicate((w) => w is ActionBar && w.label == label);
+
+  /// A button inside the modal sheet. Scoped, because the sheet's confirm button
+  /// and the [ActionBar] behind it deliberately carry the same word.
+  Finder sheetButton(String label) => find.descendant(
+    of: find.byType(BottomSheet),
+    matching: find.widgetWithText(FilledButton, label),
+  );
+
   Future<void> openRecipesTab(WidgetTester tester) async {
     await tester.tap(find.text('Recipes'));
     await tester.pumpAndSettle();
@@ -156,10 +183,7 @@ void main() {
   ) async {
     await boot(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Total dough weight'),
-      '1800',
-    );
+    await tester.enterText(fieldNamed('Total dough weight'), '1800');
     await tester.pumpAndSettle();
 
     expect(find.text('1800 g'), findsOneWidget);
@@ -170,10 +194,7 @@ void main() {
   ) async {
     await boot(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Total dough weight'),
-      '0',
-    );
+    await tester.enterText(fieldNamed('Total dough weight'), '0');
     await tester.pumpAndSettle();
 
     expect(find.text('Total dough'), findsNothing);
@@ -182,7 +203,7 @@ void main() {
 
   testWidgets('a field can be emptied and retyped', (tester) async {
     await boot(tester);
-    final field = find.widgetWithText(TextField, 'Total dough weight');
+    final field = fieldNamed('Total dough weight');
 
     await tester.enterText(field, '');
     await tester.pumpAndSettle();
@@ -204,7 +225,7 @@ void main() {
   ) async {
     await boot(tester);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Hydration'), '99');
+    await tester.enterText(fieldNamed('Hydration'), '99');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Very slack dough'), findsOneWidget);
@@ -216,14 +237,14 @@ void main() {
     tester,
   ) async {
     await boot(tester);
-    expect(find.widgetWithText(TextField, 'Levain'), findsOneWidget);
+    expect(fieldNamed('Levain'), findsOneWidget);
 
     await tester.tap(find.text('Classic'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextField, 'Levain'), findsNothing);
-    expect(find.widgetWithText(TextField, 'Flour weight'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Yeast'), findsOneWidget);
+    expect(fieldNamed('Levain'), findsNothing);
+    expect(fieldNamed('Flour weight'), findsOneWidget);
+    expect(fieldNamed('Yeast'), findsOneWidget);
     expect(find.text('Total dough'), findsOneWidget);
   });
 
@@ -253,7 +274,7 @@ void main() {
     expect(find.text('Add flour'), findsOneWidget);
 
     await tapVisible(tester, find.text('Add flour'));
-    expect(find.widgetWithText(TextField, 'Flour 1'), findsOneWidget);
+    expect(fieldNamed('Flour 1'), findsOneWidget);
   });
 
   testWidgets('the library ships with built-in recipes and no saved ones', (
@@ -270,14 +291,14 @@ void main() {
   testWidgets('saving a recipe stores it and lists it', (tester) async {
     await boot(tester);
 
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Save'));
+    await tester.tap(actionBar('Save'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Name'),
+      find.byKey(const Key('save-recipe-name')),
       'Saturday loaf',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
 
     await openRecipesTab(tester);
@@ -307,9 +328,9 @@ void main() {
     ];
 
     await boot(tester);
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Save'));
+    await tester.tap(actionBar('Save'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
 
     expect(repository.recipes.map((r) => r.name), contains('Last week'));
@@ -346,10 +367,7 @@ void main() {
     await tester.tap(find.byTooltip('Open in calculator'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.widgetWithText(TextField, 'Total dough weight'),
-      findsOneWidget,
-    );
+    expect(fieldNamed('Total dough weight'), findsOneWidget);
     // The built-in is a 90/10 blend, so the calculator should show both flours.
     expect(find.text('Bread flour'), findsWidgets);
   });
@@ -383,9 +401,7 @@ void main() {
 
     await tester.tap(find.text('Country Sourdough'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(FloatingActionButton, 'Plan this bake'),
-    );
+    await tester.tap(actionBar('Plan this bake'));
     await tester.pumpAndSettle();
 
     expect(find.text('Timing'), findsOneWidget);
@@ -396,7 +412,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Cold proof'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Start bake'));
+    await tester.tap(actionBar('Start bake'));
     await tester.pumpAndSettle();
 
     expect(notifications.scheduled, isNotNull);
@@ -412,11 +428,9 @@ void main() {
     await openRecipesTab(tester);
     await tester.tap(find.text('Country Sourdough'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(FloatingActionButton, 'Plan this bake'),
-    );
+    await tester.tap(actionBar('Plan this bake'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Start bake'));
+    await tester.tap(actionBar('Start bake'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('still here to follow'), findsOneWidget);
@@ -434,14 +448,13 @@ void main() {
     await tapVisible(tester, find.text('Rich and sweet'));
     await tapVisible(tester, find.text('Classic'));
 
-    // The composed recipe is on screen straight away, no Generate button.
-    await tester.ensureVisible(find.text('Total dough'));
+    // The composed recipe is there straight away, no Generate button — but it
+    // is the last thing in a lazy list, so it has to be scrolled into being.
+    await tester.scrollUntilVisible(find.text('Total dough'), 200);
     await tester.pumpAndSettle();
     expect(find.text('Total dough'), findsOneWidget);
 
-    await tester.tap(
-      find.widgetWithText(FloatingActionButton, 'Save this recipe'),
-    );
+    await tester.tap(actionBar('Save this recipe'));
     await tester.pumpAndSettle();
 
     expect(repository.recipes.single.name, 'Rich and sweet');
@@ -460,8 +473,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // A rail instead of a bottom bar, and the recipe visible without scrolling.
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(
+      find.byWidgetPredicate((w) => w is AppNavBar && w.vertical),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate((w) => w is AppNavBar && !w.vertical),
+      findsNothing,
+    );
     expect(find.text('Total dough'), findsOneWidget);
   });
 }

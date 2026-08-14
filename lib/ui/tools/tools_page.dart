@@ -5,7 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../domain/dough_temp.dart';
 import '../widgets/number_field.dart';
-import '../widgets/section_card.dart';
+import '../widgets/panel.dart';
+import '../widgets/style_toggle.dart';
 
 class ToolsPage extends StatelessWidget {
   const ToolsPage({super.key});
@@ -85,7 +86,7 @@ class _DoughTempCardState extends State<_DoughTempCard> {
     final baking = theme.extension<BakingColors>()!;
     final result = _result;
 
-    return SectionCard(
+    return Panel(
       title: 'Dough temperature',
       note:
           'Work out how warm the water needs to be to finish at your target '
@@ -127,64 +128,67 @@ class _DoughTempCardState extends State<_DoughTempCard> {
             ),
           ),
         const SizedBox(height: Insets.sm),
-        Text('Mixing', style: theme.textTheme.labelMedium),
+        const SectionLabel('Mixing'),
         const SizedBox(height: Insets.sm),
-        SegmentedButton<double>(
-          segments: const [
-            ButtonSegment(value: handMixFriction, label: Text('By hand')),
-            ButtonSegment(value: standMixerFriction, label: Text('Mixer')),
+        StyleToggle<double>(
+          options: const [
+            ToggleOption(value: handMixFriction, label: 'By hand'),
+            ToggleOption(value: standMixerFriction, label: 'Mixer'),
           ],
-          selected: {_friction},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => setState(() => _friction = s.first),
+          selected: _friction,
+          onChanged: (v) => setState(() => _friction = v),
         ),
         const SizedBox(height: Insets.xl),
-        Container(
-          padding: const EdgeInsets.all(Insets.lg),
+        DecoratedBox(
           decoration: BoxDecoration(
             color: baking.proofContainer,
             borderRadius: BorderRadius.circular(Radii.field),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Use water at',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: baking.onProofContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Use water at',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: baking.onProofContainerMuted,
+                  ),
                 ),
-              ),
-              const SizedBox(height: Insets.xs),
-              Text(
-                result == null
-                    ? '—'
-                    : '${result.waterTemp.toStringAsFixed(1)} °C',
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontFeatures: tabularFigures,
-                  fontFamily: numericFont,
-                ),
-              ),
-              if (result?.warning != null) ...[
-                const SizedBox(height: Insets.sm),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, size: 18, color: baking.warn),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: Text(
-                        result!.warning!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: baking.warn,
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: Insets.xs),
+                Text(
+                  result == null
+                      ? '—'
+                      : '${result.waterTemp.toStringAsFixed(1)} °C',
+                  style: numeric(
+                    theme.textTheme.displaySmall,
+                  ).copyWith(color: baking.onProofContainer),
                 ),
               ],
-            ],
+            ),
           ),
         ),
+        // Outside the tonal block, deliberately: only the two `onProofContainer`
+        // foregrounds are tuned against that warm fill, and advisory text reads
+        // better beside the answer than inside it.
+        if (result?.warning != null) ...[
+          const SizedBox(height: Insets.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 18, color: baking.warn),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Text(
+                  result!.warning!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: baking.warn,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

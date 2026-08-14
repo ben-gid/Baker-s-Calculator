@@ -7,8 +7,10 @@ import '../../domain/calculator.dart';
 import '../../domain/models/dough_style.dart';
 import '../../domain/wizard.dart';
 import '../../state/providers.dart';
+import '../widgets/action_bar.dart';
+import '../widgets/panel.dart';
 import '../widgets/recipe_view.dart';
-import '../widgets/section_card.dart';
+import '../widgets/style_toggle.dart';
 
 /// "Make me a recipe" in four choices.
 ///
@@ -34,7 +36,9 @@ class _WizardPageState extends ConsumerState<WizardPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Suggest a recipe')),
-      floatingActionButton: FloatingActionButton.extended(
+      bottomNavigationBar: ActionBar(
+        label: 'Save this recipe',
+        icon: Icons.bookmark_add_outlined,
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           final router = GoRouter.of(context);
@@ -46,14 +50,12 @@ class _WizardPageState extends ConsumerState<WizardPage> {
           );
           router.go('/recipe/${saved.id}');
         },
-        icon: const Icon(Icons.bookmark_add_outlined),
-        label: const Text('Save this recipe'),
       ),
       body: SafeArea(
         child: ListView(
           padding: pagePadding(context),
           children: [
-            SectionCard(
+            Panel(
               title: 'What are you baking?',
               children: [
                 RadioGroup<BreadCharacter>(
@@ -75,23 +77,22 @@ class _WizardPageState extends ConsumerState<WizardPage> {
               ],
             ),
             const SizedBox(height: Insets.md),
-            SectionCard(
+            Panel(
               title: 'How is it leavened?',
               children: [
-                SegmentedButton<DoughStyle>(
-                  segments: [
+                StyleToggle<DoughStyle>(
+                  options: [
                     for (final style in DoughStyle.values)
-                      ButtonSegment(value: style, label: Text(style.label)),
+                      ToggleOption(value: style, label: style.label),
                   ],
-                  selected: {_choices.style},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (selection) =>
-                      _update(_choices.copyWith(style: selection.first)),
+                  selected: _choices.style,
+                  onChanged: (style) =>
+                      _update(_choices.copyWith(style: style)),
                 ),
               ],
             ),
             const SizedBox(height: Insets.md),
-            SectionCard(
+            Panel(
               title: 'Flour',
               children: [
                 Wrap(
@@ -110,7 +111,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
               ],
             ),
             const SizedBox(height: Insets.md),
-            SectionCard(
+            Panel(
               title: 'Anything in it?',
               children: [
                 Wrap(
