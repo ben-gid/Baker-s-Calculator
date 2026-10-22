@@ -232,6 +232,17 @@ ready); otherwise the dough being built fills to its hydration; otherwise an
 empty jar. The calculator's header jar fills to the hydration as you type. Home's
 jar and the calculator's share `jarHeroTag`, so one flies into the other.
 
+Each saved recipe has its own jar, which travels with it: its shelf card on
+Home, its library row, its page's header and its plan's header all wrap the
+jar in a `Hero` tagged `recipeJarTag(recipe.id)`. A tag must appear at most
+once per screen, so a screen that lists one recipe twice needs a different
+tag for the second. Every screen sizes the jar with `jarLevelFor(hydration)`,
+except the plan, which draws it at `ActiveBake.peakLevel` with a dome: where
+the plan takes the dough. The small jars on the shelf and in the library pass
+`animate: false`, so dozens of them never run tickers. The plan's timeline
+colours the steps where `BakeStep.ferments` is true (bulk, folds and proof) in
+`starter` and `starterDeep`, the same steps `riseAt` counts.
+
 Motion is spent on the jar and on moving between places; cards, lists and text
 stay still. The vocabulary in [lib/ui/widgets/motion.dart](lib/ui/widgets/motion.dart)
 is `RiseIn` (a section drifts up as it fades in, with a short stagger) and
