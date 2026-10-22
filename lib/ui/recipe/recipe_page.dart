@@ -27,8 +27,8 @@ import '../widgets/starter_jar.dart';
 /// bake" carries the jar on to the plan.
 ///
 /// The loaf count can be changed here for one bake without touching the saved
-/// recipe: the table, the share and "Open in calculator" all take the count on
-/// screen, and leaving the page forgets it.
+/// recipe: the table, the share, "Open in calculator" and the bake plan's
+/// grams all take the count on screen, and leaving the page forgets it.
 class RecipePage extends ConsumerStatefulWidget {
   const RecipePage({super.key, required this.id});
 
@@ -101,7 +101,9 @@ class _RecipePageState extends ConsumerState<RecipePage> {
         icon: Icons.schedule,
         onPressed: blocked
             ? null
-            : () => context.push('/recipe/${recipe.id}/plan'),
+            : () => context.push(
+                '/recipe/${recipe.id}/plan?loaves=${input.loaves}',
+              ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

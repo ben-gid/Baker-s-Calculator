@@ -63,9 +63,9 @@ Recipe _classic(RecipeInput input) {
 
   final dough = <Ingredient>[
     ..._flourRows(input, doughFlour),
-    _pct('Water', water, doughFlour),
-    _pct('Yeast', doughFlour * yeast / 100, doughFlour),
-    _pct('Salt', doughFlour * salt / 100, doughFlour),
+    _pct('Water', water, doughFlour, IngredientRole.water),
+    _pct('Yeast', doughFlour * yeast / 100, doughFlour, IngredientRole.yeast),
+    _pct('Salt', doughFlour * salt / 100, doughFlour, IngredientRole.salt),
     ..._enrichmentRows(input, doughFlour),
     ..._mixInRows(input, doughFlour),
   ];
@@ -117,16 +117,21 @@ Recipe _sourdough(RecipeInput input) {
       IngredientGroup(
         name: 'Levain',
         ingredients: [
-          _pct('Flour', levainFlour, doughFlour),
-          _pct('Water', levainWater, doughFlour),
+          _pct('Flour', levainFlour, doughFlour, IngredientRole.flour),
+          _pct('Water', levainWater, doughFlour, IngredientRole.water),
         ],
       ),
       IngredientGroup(
         name: 'Dough',
         ingredients: [
           ..._flourRows(input, doughFlour),
-          _pct('Water', water, doughFlour),
-          _pct('Salt', doughFlour * salt / 100, doughFlour),
+          _pct('Water', water, doughFlour, IngredientRole.water),
+          _pct(
+            'Salt',
+            doughFlour * salt / 100,
+            doughFlour,
+            IngredientRole.salt,
+          ),
           ..._enrichmentRows(input, doughFlour),
           ..._mixInRows(input, doughFlour),
         ],
@@ -174,17 +179,27 @@ Recipe _preferment(RecipeInput input) {
       IngredientGroup(
         name: 'Preferment',
         ingredients: [
-          _pct('Flour', prefermentFlour, doughFlour),
-          _pct('Water', prefermentWater, doughFlour),
-          _pct('Yeast', prefermentYeastWeight, doughFlour),
+          _pct('Flour', prefermentFlour, doughFlour, IngredientRole.flour),
+          _pct('Water', prefermentWater, doughFlour, IngredientRole.water),
+          _pct(
+            'Yeast',
+            prefermentYeastWeight,
+            doughFlour,
+            IngredientRole.yeast,
+          ),
         ],
       ),
       IngredientGroup(
         name: 'Dough',
         ingredients: [
           ..._flourRows(input, doughFlour),
-          _pct('Water', water, doughFlour),
-          _pct('Salt', doughFlour * salt / 100, doughFlour),
+          _pct('Water', water, doughFlour, IngredientRole.water),
+          _pct(
+            'Salt',
+            doughFlour * salt / 100,
+            doughFlour,
+            IngredientRole.salt,
+          ),
           ..._enrichmentRows(input, doughFlour),
           ..._mixInRows(input, doughFlour),
         ],
@@ -277,9 +292,15 @@ double _solveDoughFlour(RecipeInput input, double denominator) {
 // Shared row builders
 // ---------------------------------------------------------------------------
 
-Ingredient _pct(String name, double grams, double doughFlour) => Ingredient(
+Ingredient _pct(
+  String name,
+  double grams,
+  double doughFlour,
+  IngredientRole role,
+) => Ingredient(
   name: name,
   grams: grams,
+  role: role,
   bakersPercent: doughFlour == 0 ? null : grams / doughFlour * 100,
 );
 
@@ -287,7 +308,7 @@ Ingredient _pct(String name, double grams, double doughFlour) => Ingredient(
 /// baker did not specify one. Either way the rows add up to 100%.
 List<Ingredient> _flourRows(RecipeInput input, double doughFlour) {
   if (input.flourBlend.isEmpty) {
-    return [_pct('Flour', doughFlour, doughFlour)];
+    return [_pct('Flour', doughFlour, doughFlour, IngredientRole.flour)];
   }
   return [
     for (final part in input.flourBlend)
@@ -295,6 +316,7 @@ List<Ingredient> _flourRows(RecipeInput input, double doughFlour) {
         part.name,
         doughFlour * _require(part.percent, 'flourBlend.percent') / 100,
         doughFlour,
+        IngredientRole.flour,
       ),
   ];
 }
@@ -304,13 +326,24 @@ List<Ingredient> _enrichmentRows(RecipeInput input, double doughFlour) {
   if (enrichment == null || enrichment.isEmpty) return const [];
   return [
     if (enrichment.fatPercent != null)
-      _pct('Fat', doughFlour * enrichment.fatPercent! / 100, doughFlour),
+      _pct(
+        'Fat',
+        doughFlour * enrichment.fatPercent! / 100,
+        doughFlour,
+        IngredientRole.fat,
+      ),
     if (enrichment.sugarPercent != null)
-      _pct('Sugar', doughFlour * enrichment.sugarPercent! / 100, doughFlour),
+      _pct(
+        'Sugar',
+        doughFlour * enrichment.sugarPercent! / 100,
+        doughFlour,
+        IngredientRole.sugar,
+      ),
     if (enrichment.eggCount != null)
       Ingredient(
         name: 'Eggs',
         grams: enrichment.eggGrams,
+        role: IngredientRole.eggs,
         bakersPercent: doughFlour == 0
             ? null
             : enrichment.eggGrams / doughFlour * 100,
@@ -325,6 +358,7 @@ List<Ingredient> _mixInRows(RecipeInput input, double doughFlour) => [
       mixIn.name,
       doughFlour * _require(mixIn.percent, 'mixIns.percent') / 100,
       doughFlour,
+      IngredientRole.mixIn,
     ),
 ];
 

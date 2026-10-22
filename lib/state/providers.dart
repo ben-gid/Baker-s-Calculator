@@ -67,6 +67,21 @@ final settingsProvider = NotifierProvider<SettingsController, Settings>(
   SettingsController.new,
 );
 
+/// Written by the dough-temperature card, read by a bake's mixing step.
+class DoughTempsController extends Notifier<DoughTemps> {
+  @override
+  DoughTemps build() => ref.read(settingsRepositoryProvider).readDoughTemps();
+
+  void set(DoughTemps temps) {
+    state = temps;
+    ref.read(settingsRepositoryProvider).writeDoughTemps(temps);
+  }
+}
+
+final doughTempsProvider = NotifierProvider<DoughTempsController, DoughTemps>(
+  DoughTempsController.new,
+);
+
 // ---------------------------------------------------------------------------
 // The recipe being edited
 // ---------------------------------------------------------------------------
@@ -124,15 +139,59 @@ final issuesProvider = Provider<List<InputIssue>>(
 // The bake in progress
 // ---------------------------------------------------------------------------
 
-/// Set by "Start bake" and read by Home. Starting a new bake replaces the old
-/// one, the same way the reminders do.
+/// Set by "Start bake" and read by Home and the live plan. Starting a new bake
+/// replaces the old one, the same way the reminders do.
+///
+/// Every change is a pure [ActiveBake] operation at the moment it happened,
+/// saved, then the reminders set again quietly — the forecast after a Done is
+/// a different one. A reminder's button arrives here too while the app runs.
 class ActiveBakeController extends Notifier<ActiveBake?> {
   @override
-  ActiveBake? build() => ref.read(settingsRepositoryProvider).readActiveBake();
+  ActiveBake? build() {
+    final presses = ref
+        .read(notificationServiceProvider)
+        .actions
+        .listen((r) => _change((b, now) => b.apply(r.action, r.step, now)));
+    ref.onDispose(presses.cancel);
+    return ref.read(settingsRepositoryProvider).readActiveBake();
+  }
 
-  void start(ActiveBake bake) {
+  /// Recorded whatever happens to the reminders: a refused permission still
+  /// leaves a bake under way, and Home can still count it down.
+  Future<ScheduleOutcome> start(ActiveBake bake) async {
     state = bake;
-    ref.read(settingsRepositoryProvider).writeActiveBake(bake);
+    await ref.read(settingsRepositoryProvider).writeActiveBake(bake);
+    return ref.read(notificationServiceProvider).scheduleBake(bake);
+  }
+
+  void done(int step) => _change((b, now) => b.done(step, now));
+  void foldSetDone(int step) => _change((b, now) => b.foldSetDone(step, now));
+  void skipTo(int step) => _change((b, now) => b.skipTo(step, now));
+  void extend(int step) => _change((b, now) => b.extend(step, now));
+  void tick(int step) => _change((b, now) => b.tick(step, now));
+  void retime(int step, Duration duration) =>
+      _change((b, _) => b.retime(step, duration));
+  void goBackTo(int step, {required bool resetLater}) =>
+      _change((b, now) => b.goBackTo(step, now, resetLater: resetLater));
+
+  /// Ticking a row as weighed moves no time, so the reminders stay.
+  void toggleWeighed(String key) =>
+      _change((b, _) => b.toggleWeighed(key), reschedule: false);
+
+  void _change(
+    ActiveBake Function(ActiveBake bake, DateTime now) operation, {
+    bool reschedule = true,
+  }) {
+    final bake = state;
+    if (bake == null) return;
+    final next = operation(bake, DateTime.now());
+    state = next;
+    ref.read(settingsRepositoryProvider).writeActiveBake(next);
+    if (reschedule) {
+      ref
+          .read(notificationServiceProvider)
+          .scheduleBake(next, askPermission: false);
+    }
   }
 
   Future<void> stop() async {

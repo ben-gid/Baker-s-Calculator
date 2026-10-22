@@ -6,16 +6,37 @@
 /// sum a count as if it were a weight.
 library;
 
+/// What an ingredient is, so a bake step can claim its rows without matching
+/// them by name — a blend's flours are called whatever the baker typed.
+///
+/// The calculator never emits [leaven] or [starter]: they are the bake plan's
+/// rows for the levain or preferment going in whole, and the ripe starter that
+/// seeds a levain feed.
+enum IngredientRole {
+  flour,
+  water,
+  salt,
+  yeast,
+  fat,
+  sugar,
+  eggs,
+  mixIn,
+  leaven,
+  starter,
+}
+
 class Ingredient {
   const Ingredient({
     required this.name,
     required this.grams,
+    required this.role,
     this.bakersPercent,
     this.count,
   });
 
   final String name;
   final double grams;
+  final IngredientRole role;
 
   /// Weight as a percentage of the flour in the dough, which is 100%. Null only
   /// when there is no flour to divide by.
@@ -28,6 +49,7 @@ class Ingredient {
   Ingredient scaled(double factor) => Ingredient(
     name: name,
     grams: grams * factor,
+    role: role,
     bakersPercent: bakersPercent,
     count: count == null ? null : count! * factor,
   );

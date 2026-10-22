@@ -13,6 +13,7 @@ import '../../domain/models/recipe.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
+import '../widgets/bake_step_card.dart';
 import '../widgets/motion.dart';
 import '../widgets/panel.dart';
 import '../widgets/starter_jar.dart';
@@ -237,17 +238,31 @@ class _JarHeroState extends State<_JarHero> {
   }
 }
 
-class _BakeCaption extends ConsumerWidget {
+/// What the bake is doing now, under the jar. The headline opens the step
+/// under way into its card — the grams for it, and Skip and Done — and the
+/// dots under it are the whole bake at a glance, opening the live plan.
+class _BakeCaption extends ConsumerStatefulWidget {
   const _BakeCaption({required this.bake, required this.now});
 
   final ActiveBake bake;
   final DateTime now;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BakeCaption> createState() => _BakeCaptionState();
+}
+
+class _BakeCaptionState extends ConsumerState<_BakeCaption> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final step = bake.stepAt(now);
-    final next = step == null ? null : bake.stepAfter(step);
+    final bake = widget.bake;
+    final now = widget.now;
+    final current = bake.currentAt(now);
+    final step = current == null ? null : bake.schedule[current];
+    final nextIndex = current == null ? null : bake.nextAfter(current);
+    final next = nextIndex == null ? null : bake.schedule[nextIndex];
 
     final String headline;
     if (step == null) {
@@ -261,16 +276,66 @@ class _BakeCaption extends ConsumerWidget {
           '${step.step.title} · ${formatDuration(step.endsAt.difference(now))} left';
     }
 
+    final card = _open && current != null
+        ? Padding(
+            padding: const EdgeInsets.only(top: Insets.sm),
+            child: BakeStepCard(bake: bake, index: current, now: now),
+          )
+        : const SizedBox(width: double.infinity);
+
     return Column(
       children: [
         SectionLabel(bake.recipeName),
         const SizedBox(height: Insets.xs),
-        Text(
-          headline,
-          textAlign: TextAlign.center,
-          style: numeric(theme.textTheme.titleLarge),
+        Semantics(
+          button: step != null,
+          expanded: step == null ? null : _open,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.field),
+            onTap: step == null ? null : () => setState(() => _open = !_open),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.sm,
+                vertical: Insets.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      headline,
+                      textAlign: TextAlign.center,
+                      style: numeric(theme.textTheme.titleLarge),
+                    ),
+                  ),
+                  if (step != null)
+                    Icon(_open ? Icons.expand_less : Icons.expand_more),
+                ],
+              ),
+            ),
+          ),
         ),
-        if (next != null) ...[
+        const SizedBox(height: Insets.sm),
+        InkWell(
+          borderRadius: BorderRadius.circular(Radii.pill),
+          onTap: () => context.push('/recipe/${bake.recipeId}/plan'),
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.sm),
+            child: BakeDots(bake: bake, now: now),
+          ),
+        ),
+        // Without motion the card simply appears: AnimatedSize asserts when
+        // its duration is zero.
+        if (MediaQuery.disableAnimationsOf(context))
+          card
+        else
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: card,
+          ),
+        if (next != null && !_open) ...[
           const SizedBox(height: Insets.xs),
           Text(
             'Then ${next.step.title.toLowerCase()} at ${formatClock(next.startsAt)}',

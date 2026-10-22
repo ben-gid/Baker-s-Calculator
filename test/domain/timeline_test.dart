@@ -35,19 +35,39 @@ Duration stepOfKind(BakeTimeline timeline, StepKind kind) =>
 
 void main() {
   group('shape of each timeline', () {
-    test('classic runs mix to bake with no preferment step', () {
+    test('classic autolyses, then mixes through to bake', () {
       final steps = buildTimeline(_classic).steps.map((s) => s.kind);
-      expect(steps.first, StepKind.mix);
+      expect(steps.take(2), [StepKind.autolyse, StepKind.mix]);
       expect(steps.last, StepKind.bake);
       expect(steps, isNot(contains(StepKind.preferment)));
-      expect(steps, isNot(contains(StepKind.autolyse)));
+      expect(steps, isNot(contains(StepKind.levain)));
     });
 
-    test('sourdough autolyses, folds and cold proofs', () {
+    test('sourdough feeds the levain, autolyses, folds and cold proofs', () {
       final steps = buildTimeline(_sourdough).steps.map((s) => s.kind);
-      expect(steps.first, StepKind.autolyse);
+      expect(steps.take(2), [StepKind.levain, StepKind.autolyse]);
       expect(steps, containsAll([StepKind.fold, StepKind.preshape]));
       expect(steps.last, StepKind.bake);
+    });
+
+    test('a leaner levain feed takes longer to ripen', () {
+      Duration feed(FeedRatio ratio) =>
+          buildTimeline(_sourdough, ratio: ratio).steps.first.duration;
+      expect(feed(FeedRatio.r111), lessThan(feed(FeedRatio.r122)));
+      expect(feed(FeedRatio.r122), lessThan(feed(FeedRatio.r155)));
+    });
+
+    test('changing the number of folds leaves the bulk just as long', () {
+      final timeline = buildTimeline(_sourdough);
+      Duration bulk(BakeTimeline t) => t.steps
+          .where((s) => s.kind == StepKind.fold || s.kind == StepKind.bulk)
+          .fold(Duration.zero, (sum, s) => sum + s.duration);
+
+      final one = timeline.withFoldSets(1);
+      final fold = one.steps.firstWhere((s) => s.kind == StepKind.fold);
+      expect(fold.sets, 1);
+      expect(fold.duration, foldInterval);
+      expect(bulk(one), bulk(timeline));
     });
 
     test('preferment starts by building the preferment', () {

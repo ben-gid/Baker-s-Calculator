@@ -74,8 +74,10 @@ GoRouter buildRouter() => GoRouter(
     ),
     GoRoute(
       path: '/recipe/:id/plan',
-      builder: (context, state) =>
-          TimelinePage(id: state.pathParameters['id']!),
+      builder: (context, state) => TimelinePage(
+        id: state.pathParameters['id']!,
+        loaves: int.tryParse(state.uri.queryParameters['loaves'] ?? ''),
+      ),
     ),
     GoRoute(
       path: '/import',

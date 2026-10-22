@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'data/notification_service.dart';
 import 'data/recipe_repository.dart';
 import 'data/settings_repository.dart';
 import 'state/providers.dart';
@@ -15,6 +16,9 @@ Future<void> main() async {
 
   final preferences = await SharedPreferences.getInstance();
   final recipes = await RecipeRepository.open();
+  // Registers the reminder buttons; asks for nothing.
+  final notifications = NotificationService();
+  await notifications.initialise();
 
   runApp(
     ProviderScope(
@@ -23,6 +27,7 @@ Future<void> main() async {
           SettingsRepository(preferences),
         ),
         recipeRepositoryProvider.overrideWithValue(recipes),
+        notificationServiceProvider.overrideWithValue(notifications),
       ],
       child: const BakersCalculatorApp(),
     ),

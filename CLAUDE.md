@@ -30,7 +30,8 @@ everything → `domain`, and **`domain` imports nothing from the others**.
 ```
 lib/
   domain/   pure Dart. calculator, validation, scaling, dough_temp, timeline,
-            wizard, models. No `package:flutter` import anywhere in here.
+            step_ingredients, wizard, models. No `package:flutter` import
+            anywhere in here.
   data/     recipe_repository, system_recipes, recipe_share,
             settings_repository, notification_service.
   state/    providers.dart — every Riverpod provider and controller.
@@ -70,6 +71,9 @@ function to `domain/` and test it there. The recipe table is the example: it
 shows `recipe.gramsAt(percent)` beside each percentage, and
 `Recipe.doughFlour`, `leaven` and `eggs` exist so it never matches rows by name;
 the `table reads the same grams as the groups` test holds that to the groups.
+The bake plan does the same with `Ingredient.role`: `stepIngredients` claims
+each step's rows by `IngredientRole`, because a blend's flours are called
+whatever the baker typed.
 
 ### The regression baseline is load-bearing
 
@@ -166,6 +170,47 @@ mutations would both read the same starting list and the second would discard
 the first, so every mutation goes through `_serialised()`, and `_ready()` waits
 for the first load before writing — saving from the calculator routinely beats
 the file read.
+
+### The live bake
+
+`ActiveBake` (`domain/models/active_bake.dart`) is the plan as started plus a
+`StepRecord` per step, and time hangs off one **anchor**: the step the clock
+last restarted on, and when. Steps behind it keep their real times in their
+records; from it on, the pending steps are laid end to end, so the clock moves
+from step to step by itself and `currentAt(now)` is derived — nothing is
+written when a step's time runs out. A past step nobody ticked is
+`StepProgress.unticked` (named so because Flutter's stepper owns `StepState`).
+
+Done, Skip to, Go back, 15 more min and retime are pure operations that first
+freeze what the clock passed, then move the anchor to now. The rules the tests
+in `test/domain/active_bake_test.dart` hold:
+
+- Steps done or skipped ahead of the anchor take no time — that is how "Go
+  back, keep ticks" passes over steps already done.
+- A fold that ends early, or is left out, gives its unused time to the bulk
+  after it: fewer folds is not less fermenting.
+- A skipped step's rows roll on to the next step not skipped
+  (`stepIngredients`), except a skipped levain feed or preferment build: the
+  mix already lists the lump whole, so the feed rows are dropped.
+- `apply()` ignores a reminder for a step already dealt with, so a stale
+  notification cannot rewind the bake.
+
+The bake carries its `RecipeInput`, loaf count included, so the grams survive
+the recipe being edited or deleted. A bake saved before this model loads with
+every step pending and `input` null, and its cards show no grams.
+
+`ActiveBakeController` saves after every change and reschedules quietly
+(`askPermission: false`); permission is asked only at "Start bake".
+
+**Reminder buttons.** Android runs every notification action in a background
+isolate, even while the app is open, so `onBackgroundAction` first looks up
+the app's port in `IsolateNameServer` and hands the press over; it touches
+`SharedPreferences` itself only when no app is alive. The background copy of
+`NotificationService` is built with `hearsButtons: false` so it never takes the
+app's port. iOS needs its action categories registered before a reminder
+arrives, which is why `main()` calls `initialise()` at launch — that asks for
+nothing. The manifest's `ActionBroadcastReceiver` and `AppDelegate`'s
+`setPluginRegistrantCallback` are what make the buttons work at all.
 
 ### Theme
 
@@ -299,7 +344,8 @@ top-level so a shared link opens straight onto content.
 Tools live where they are used, not on a screen of their own. Suggest and
 Import sit on the empty jar until the baker has saved a recipe, then at the end
 of the shelf — one place at a time. The dough-temperature card is at the foot
-of the bake plan.
+of the bake plan; its inputs persist (`DoughTemps`) so the step that adds the
+water can say how warm it should be.
 
 The calculator is one form: the style, then "By flour / By dough" and the
 weight on one line, then `DoughForm` — only the boxes the style needs, with fat,
@@ -322,13 +368,21 @@ storage stay in grams. `fromGrams` rounds ounces to six places because
 `NumberField` compares its text with its value exactly.
 
 A recipe's page has its own loaf stepper, for one bake: it never saves back,
-and it carries into the share and into "Open in calculator", not into the plan,
-which shows no weights.
+and it carries into the share, into "Open in calculator" and into the plan
+(`/recipe/:id/plan?loaves=N`), whose steps list their grams.
 
-"Start bake" saves an `ActiveBake` (the schedule exactly as started, edited
-durations included) to `SharedPreferences` through `SettingsRepository`, and
-Home's jar reads it. It is recorded even when notification permission is
-refused, and "Stop bake" clears it and cancels the reminders.
+Before the bake, the plan lets the baker leave out optional steps
+(`BakeStep.optional`), count the folds and pick the levain's `FeedRatio`.
+"Start bake" saves an `ActiveBake` to `SharedPreferences` through
+`SettingsRepository`, recorded even when notification permission is refused;
+"Stop bake" clears it and cancels the reminders. From then on the same page is
+the bake's live checklist — the step under way open as `BakeStepCard`, any
+other row a tap from Tick, Go back or Skip to — and Home's caption opens the
+same card under the jar, with `BakeDots` for the whole bake. The plan's spine
+is a `Stack` sized by the card, not an `IntrinsicHeight` row: chips and
+switches under-report their intrinsic height. Home's card skips its
+`AnimatedSize` under reduced motion, because a zero-duration `AnimatedSize`
+asserts.
 `bakerscalc://import?d=<base64url>` is registered in the Android manifest and
 iOS `Info.plist`.
 

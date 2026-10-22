@@ -8,15 +8,17 @@
 /// `test/data/recipe_repository_test.dart`, where the clock is real.
 library;
 
+import 'dart:async';
+
 import 'package:bakers_calculator/app.dart';
 import 'package:bakers_calculator/core/formatting.dart';
 import 'package:bakers_calculator/data/notification_service.dart';
 import 'package:bakers_calculator/data/recipe_repository.dart';
 import 'package:bakers_calculator/data/settings_repository.dart';
+import 'package:bakers_calculator/domain/models/active_bake.dart';
 import 'package:bakers_calculator/domain/models/dough_style.dart';
 import 'package:bakers_calculator/domain/models/recipe_input.dart';
 import 'package:bakers_calculator/domain/models/saved_recipe.dart';
-import 'package:bakers_calculator/domain/timeline.dart';
 import 'package:bakers_calculator/state/providers.dart';
 import 'package:bakers_calculator/ui/widgets/action_bar.dart';
 import 'package:bakers_calculator/ui/widgets/number_field.dart';
@@ -51,16 +53,27 @@ class InMemoryRecipeRepository implements RecipeRepository {
 
 class FakeNotifications implements NotificationService {
   ScheduleOutcome outcome = ScheduleOutcome.scheduled;
-  List<ScheduledStep>? scheduled;
+  ActiveBake? scheduled;
+  int permissionAsks = 0;
 
   @override
-  Future<ScheduleOutcome> scheduleBake({
-    required String recipeName,
-    required List<ScheduledStep> steps,
+  Future<ScheduleOutcome> scheduleBake(
+    ActiveBake bake, {
+    bool askPermission = true,
   }) async {
-    scheduled = steps;
+    scheduled = bake;
+    if (askPermission) permissionAsks++;
     return outcome;
   }
+
+  final _presses = StreamController<BakeResponse>.broadcast();
+
+  /// A reminder's button, pressed while the app is open.
+  void press(BakeAction action, int step) =>
+      _presses.add((action: action, step: step));
+
+  @override
+  Stream<BakeResponse> get actions => _presses.stream;
 
   bool cancelled = false;
 
@@ -617,7 +630,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Timing'), findsOneWidget);
-    expect(find.text('Autolyse'), findsOneWidget);
+    expect(find.text('Feed the levain'), findsOneWidget);
 
     // The list is long; the later steps are built as it scrolls.
     await tester.scrollUntilVisible(find.text('Cold proof'), 200);
@@ -638,7 +651,7 @@ void main() {
     }
 
     expect(find.text('Stop bake'), findsOneWidget);
-    expect(find.textContaining('Autolyse'), findsOneWidget);
+    expect(find.textContaining('Feed the levain'), findsOneWidget);
     expect(settings.readActiveBake()?.recipeName, 'Country Sourdough');
 
     await tester.tap(find.text('Stop bake'));
@@ -666,6 +679,162 @@ void main() {
     expect(find.textContaining('still here to follow'), findsOneWidget);
     // The plan is untouched.
     expect(find.text('Autolyse'), findsOneWidget);
+  });
+
+  /// Opens Country Sourdough's plan, before anything is started.
+  Future<void> openPlan(WidgetTester tester) async {
+    await boot(tester);
+    await openRecipesTab(tester);
+    await tester.tap(find.text('Country Sourdough'));
+    await tester.pumpAndSettle();
+    await tester.tap(actionBar('Plan this bake'));
+    await tester.pumpAndSettle();
+  }
+
+  /// The card of the plan's step with this title.
+  Finder stepCard(String title) =>
+      find.ancestor(of: find.text(title), matching: find.byType(Card));
+
+  testWidgets('leaving out the autolyse moves its flour and water to the mix', (
+    tester,
+  ) async {
+    await openPlan(tester);
+    await tester.scrollUntilVisible(find.text('Autolyse'), 200);
+    await tester.pumpAndSettle();
+
+    // Before: the flour is weighed at the autolyse.
+    expect(
+      find.descendant(
+        of: stepCard('Autolyse'),
+        matching: find.text('Bread flour'),
+      ),
+      findsOneWidget,
+    );
+
+    await tapVisible(
+      tester,
+      find.descendant(of: stepCard('Autolyse'), matching: find.byType(Switch)),
+    );
+
+    await tester.scrollUntilVisible(find.text('Left out'), -200);
+    expect(find.text('Left out'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Add levain and salt'), 200);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: stepCard('Add levain and salt'),
+        matching: find.text('Bread flour'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the levain feed is weighed out on the plan', (tester) async {
+    await openPlan(tester);
+    expect(find.text('Ripe starter'), findsOneWidget);
+
+    await tapVisible(tester, find.textContaining('1:5:5'));
+    expect(
+      find.descendant(
+        of: stepCard('Feed the levain'),
+        matching: find.text('10 h'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the step under way opens on Home, and Done moves the bake on', (
+    tester,
+  ) async {
+    await openPlan(tester);
+    await tester.tap(actionBar('Start bake'));
+    await tester.pumpAndSettle();
+    expect(notifications.permissionAsks, 1);
+    for (var i = 0; i < 3; i++) {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+
+    // Collapsed: the headline and the dots, no grams yet.
+    expect(find.text('Ripe starter'), findsNothing);
+    await tester.tap(find.textContaining('Feed the levain'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ripe starter'), findsOneWidget);
+    expect(find.textContaining('back for your jar'), findsOneWidget);
+
+    // Ticking a row as weighed holds nothing up.
+    await tapVisible(tester, find.bySemanticsLabel(RegExp('Ripe starter')));
+    expect(settings.readActiveBake()!.weighed, hasLength(1));
+
+    await tapVisible(tester, find.widgetWithText(FilledButton, 'Done'));
+
+    expect(find.text('Feed the levain done'), findsOneWidget);
+    expect(find.textContaining('Autolyse'), findsWidgets);
+    final saved = settings.readActiveBake()!;
+    expect(saved.records.first.status, StepStatus.done);
+    // The reminders moved with it, without asking again.
+    expect(notifications.scheduled!.records.first.status, StepStatus.done);
+    expect(notifications.permissionAsks, 1);
+  });
+
+  testWidgets('a reminder\'s Done button moves the bake on', (tester) async {
+    await openPlan(tester);
+    await tester.tap(actionBar('Start bake'));
+    await tester.pumpAndSettle();
+
+    notifications.press(BakeAction.done, 0);
+    await tester.pumpAndSettle();
+
+    expect(settings.readActiveBake()!.records.first.status, StepStatus.done);
+  });
+
+  testWidgets('the live plan skips ahead and goes back', (tester) async {
+    await openPlan(tester);
+    await tester.tap(actionBar('Start bake'));
+    await tester.pumpAndSettle();
+    final list = find.byType(Scrollable).first;
+
+    // The plan is now the bake's checklist, the step under way open as its
+    // card. Feed the levain, then autolyse.
+    expect(actionBar('Stop bake'), findsOneWidget);
+    await tapVisible(tester, find.widgetWithText(FilledButton, 'Done'));
+    await tapVisible(tester, find.widgetWithText(FilledButton, 'Done'));
+    var bake = settings.readActiveBake()!;
+    expect(bake.records[0].status, StepStatus.done);
+    expect(bake.records[1].status, StepStatus.done);
+
+    // Skip the mix, straight to the folds.
+    await tester.scrollUntilVisible(
+      find.text('Stretch and fold'),
+      200,
+      scrollable: list,
+    );
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.text('Stretch and fold'));
+    await tapVisible(tester, find.text('Skip to this step'));
+
+    bake = settings.readActiveBake()!;
+    expect(bake.records[2].status, StepStatus.skipped);
+    expect(bake.currentAt(DateTime.now()), 3);
+    expect(find.text('Set done'), findsOneWidget);
+
+    // Back to the levain. The autolyse after it was ticked, so it asks
+    // whether to do that again.
+    await tester.scrollUntilVisible(
+      find.text('Feed the levain'),
+      -200,
+      scrollable: list,
+    );
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.text('Feed the levain'));
+    await tapVisible(tester, find.text('Go back to this step'));
+    expect(find.text('Go back to feed the levain?'), findsOneWidget);
+    await tapVisible(tester, find.text('Do them again'));
+
+    bake = settings.readActiveBake()!;
+    expect(bake.currentAt(DateTime.now()), 0);
+    expect(bake.records.every((r) => r.status == StepStatus.pending), isTrue);
   });
 
   testWidgets('the wizard composes a recipe and saves it', (tester) async {

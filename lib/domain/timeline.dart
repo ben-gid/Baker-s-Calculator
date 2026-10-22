@@ -9,7 +9,10 @@ library;
 import 'models/dough_style.dart';
 import 'models/recipe_input.dart';
 
+/// In the order a bake runs them, which is what lets a skipped step hand its
+/// ingredients to the step after it.
 enum StepKind {
+  levain,
   preferment,
   autolyse,
   mix,
@@ -27,6 +30,7 @@ class BakeStep {
     required this.title,
     required this.duration,
     this.detail,
+    this.sets,
   });
 
   final StepKind kind;
@@ -37,12 +41,26 @@ class BakeStep {
 
   final String? detail;
 
+  /// How many sets of stretch and fold, [foldInterval] apart. Folds only.
+  final int? sets;
+
+  /// Steps a baker may leave out before starting: the dough is still bread
+  /// without them.
+  bool get optional => switch (kind) {
+    StepKind.levain ||
+    StepKind.autolyse ||
+    StepKind.fold ||
+    StepKind.preshape => true,
+    _ => false,
+  };
+
   /// Worth a notification. Mixing straight after autolyse is worth an alert;
   /// "shape" taking ten minutes is not something to be reminded about.
   bool get isAlarm => switch (kind) {
     StepKind.fold ||
     StepKind.bulk ||
     StepKind.proof ||
+    StepKind.levain ||
     StepKind.preferment ||
     StepKind.autolyse ||
     StepKind.bake => true,
@@ -55,8 +73,39 @@ class BakeStep {
     _ => false,
   };
 
-  BakeStep withDuration(Duration duration) =>
-      BakeStep(kind: kind, title: title, duration: duration, detail: detail);
+  BakeStep withDuration(Duration duration) => BakeStep(
+    kind: kind,
+    title: title,
+    duration: duration,
+    detail: detail,
+    sets: sets,
+  );
+
+  BakeStep withSets(int sets) => BakeStep(
+    kind: kind,
+    title: title,
+    duration: foldInterval * sets,
+    detail: detail,
+    sets: sets,
+  );
+}
+
+/// The gap between two sets of stretch and fold.
+const foldInterval = Duration(minutes: 30);
+
+/// How a levain is fed: one part ripe starter to [parts] of flour and of water.
+/// A leaner feed takes longer to peak; the times assume 22-24 °C.
+enum FeedRatio {
+  r111(1, Duration(hours: 4)),
+  r122(2, Duration(hours: 6)),
+  r155(5, Duration(hours: 10));
+
+  const FeedRatio(this.parts, this.ripens);
+
+  final int parts;
+  final Duration ripens;
+
+  String get label => '1:$parts:$parts';
 }
 
 /// A step pinned to a wall-clock time.
@@ -85,6 +134,30 @@ class BakeTimeline {
       if (i == index) steps[i].withDuration(duration) else steps[i],
   ]);
 
+  /// Sets the number of folds. The bulk after them gives or takes the
+  /// difference, so the dough ferments just as long either way.
+  BakeTimeline withFoldSets(int sets) {
+    final fold = steps.indexWhere((s) => s.kind == StepKind.fold);
+    if (fold < 0) return this;
+    final folds = steps[fold].withSets(sets);
+    final bulk =
+        fold + 1 < steps.length && steps[fold + 1].kind == StepKind.bulk
+        ? fold + 1
+        : -1;
+    final shared = bulk < 0
+        ? Duration.zero
+        : steps[fold].duration + steps[bulk].duration;
+    return BakeTimeline([
+      for (var i = 0; i < steps.length; i++)
+        if (i == fold)
+          folds
+        else if (i == bulk)
+          steps[i].withDuration(_atLeastAMinute(shared - folds.duration))
+        else
+          steps[i],
+    ]);
+  }
+
   /// Lays the steps end to end from [start].
   List<ScheduledStep> scheduleFrom(DateTime start) {
     final scheduled = <ScheduledStep>[];
@@ -105,7 +178,14 @@ class BakeTimeline {
 Duration _hours(double value) =>
     Duration(minutes: (value * 60).round().clamp(1, 60 * 48));
 
-BakeTimeline buildTimeline(RecipeInput input) {
+Duration _atLeastAMinute(Duration value) =>
+    value < const Duration(minutes: 1) ? const Duration(minutes: 1) : value;
+
+/// [ratio] only matters to sourdough, whose plan starts by feeding the levain.
+BakeTimeline buildTimeline(
+  RecipeInput input, {
+  FeedRatio ratio = FeedRatio.r122,
+}) {
   final enrichment = input.enrichmentOrEmpty;
 
   // Fat, sugar and eggs all slow yeast down; heavily enriched doughs take
@@ -118,7 +198,7 @@ BakeTimeline buildTimeline(RecipeInput input) {
 
   return switch (input.style) {
     DoughStyle.classic => _classicTimeline(input, richnessFactor),
-    DoughStyle.sourdough => _sourdoughTimeline(input, richnessFactor),
+    DoughStyle.sourdough => _sourdoughTimeline(input, richnessFactor, ratio),
     DoughStyle.preferment => _prefermentTimeline(input, richnessFactor),
   };
 }
@@ -129,6 +209,12 @@ BakeTimeline _classicTimeline(RecipeInput input, double richnessFactor) {
   final bulk = (1.5 / yeast * richnessFactor).clamp(0.5, 6.0);
 
   return BakeTimeline([
+    const BakeStep(
+      kind: StepKind.autolyse,
+      title: 'Autolyse',
+      duration: Duration(minutes: 30),
+      detail: 'Flour and water only. The yeast and salt go in after.',
+    ),
     BakeStep(
       kind: StepKind.mix,
       title: 'Mix',
@@ -156,13 +242,24 @@ BakeTimeline _classicTimeline(RecipeInput input, double richnessFactor) {
   ]);
 }
 
-BakeTimeline _sourdoughTimeline(RecipeInput input, double richnessFactor) {
+BakeTimeline _sourdoughTimeline(
+  RecipeInput input,
+  double richnessFactor,
+  FeedRatio ratio,
+) {
   final levain = (input.levainPercent ?? 20).clamp(5, 60);
   // 20% levain is the reference point at about 5.5 hours.
   final bulk = (5.5 * (20 / levain) * richnessFactor).clamp(2.5, 10.0);
-  final foldWindow = _hours(bulk * 0.45);
+  const sets = 4;
+  final foldWindow = foldInterval * sets;
 
   return BakeTimeline([
+    BakeStep(
+      kind: StepKind.levain,
+      title: 'Feed the levain',
+      duration: ratio.ripens,
+      detail: 'Ready when doubled, domed and full of bubbles.',
+    ),
     const BakeStep(
       kind: StepKind.autolyse,
       title: 'Autolyse',
@@ -178,12 +275,13 @@ BakeTimeline _sourdoughTimeline(RecipeInput input, double richnessFactor) {
       kind: StepKind.fold,
       title: 'Stretch and fold',
       duration: foldWindow,
-      detail: 'Four sets, about 30 minutes apart.',
+      detail: 'Wet your hands, lift each side and fold it over the middle.',
+      sets: sets,
     ),
     BakeStep(
       kind: StepKind.bulk,
       title: 'Finish bulk',
-      duration: _hours(bulk) - foldWindow,
+      duration: _atLeastAMinute(_hours(bulk) - foldWindow),
       detail: 'Until risen by about half and domed.',
     ),
     const BakeStep(
