@@ -113,6 +113,8 @@ class _CalculatorForm extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _StyleSelector(style: input.style, onChanged: controller.setStyle),
+        const SizedBox(height: Insets.md),
+        _BatchCard(input: input),
         const SizedBox(height: Insets.lg),
         _DoughCard(input: input, issues: issues),
         const SizedBox(height: Insets.md),
@@ -121,8 +123,6 @@ class _CalculatorForm extends ConsumerWidget {
         _EnrichmentCard(input: input, issues: issues),
         const SizedBox(height: Insets.md),
         _MixInsCard(input: input, issues: issues),
-        const SizedBox(height: Insets.md),
-        _BatchCard(input: input),
       ],
     );
   }
