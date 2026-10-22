@@ -7,13 +7,31 @@ class Field {
   double? value;
 
   Field({
-    required this.label, 
+    required this.label,
     required this.valueType,
     this.hint,
     this.helperText,
     this.name,
-    this.value, 
+    this.value,
   });
+
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'valueType': valueType,
+    'hint': hint,
+    'helperText': helperText,
+    'name': name,
+    'value': value,
+  };
+
+  factory Field.fromJson(Map<String, dynamic> json) => Field(
+    label: json['label'],
+    valueType: json['valueType'],
+    hint: json['hint'],
+    helperText: json['helperText'],
+    name: json['name'],
+    value: json['value']?.toDouble(),
+  );
 
   @override
   String toString() {
@@ -31,17 +49,16 @@ class FieldGroup {
   final String groupName;
   final List<Field> fields;
 
-  FieldGroup({ required this.groupName, required this.fields});
+  FieldGroup({required this.groupName, required this.fields});
 }
 
 Field? getField(String label, List<Field> fields) {
   /// returns the first instance of a Field which label mathes its label.
   try {
-    return fields.firstWhere((f) => f.label == label,);
-  } catch(_) {
+    return fields.firstWhere((f) => f.label == label);
+  } catch (_) {
     return null;
   }
-  
 }
 
 List<Field> getFieldsFromGroup(List<FieldGroup> fieldGroups) {

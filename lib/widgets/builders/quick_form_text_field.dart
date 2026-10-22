@@ -36,7 +36,6 @@ class _QuickFormTextFieldState extends State<QuickFormTextField> {
   @override
   Widget build(BuildContext context) {
     final label = widget.field.label;
-    final helper = widget.field.helperText;
     return Padding(
       padding: EdgeInsets.all(5.0),
       child: Row(

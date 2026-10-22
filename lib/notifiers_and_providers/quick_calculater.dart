@@ -6,14 +6,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Define the provider that holds the current calculator function
 final quickCalculateProvider =
-    NotifierProvider<QuickCalculateNotifier, List<OutputFieldGroup> Function()>(
-      QuickCalculateNotifier.new,
-    );
+    NotifierProvider<
+      QuickCalculateNotifier,
+      List<OutputFieldGroup> Function({
+        bool isDoughWeightMode,
+        bool weightIncludesMixins,
+        List<Field>? doughInputs,
+        List<Field>? enrichedInputs,
+        List<Field>? flourDispersionInputs,
+        List<Field>? mixinInputs,
+      })
+    >(QuickCalculateNotifier.new);
 
 class QuickCalculateNotifier
-    extends Notifier<List<OutputFieldGroup> Function()> {
+    extends
+        Notifier<
+          List<OutputFieldGroup> Function({
+            bool isDoughWeightMode,
+            bool weightIncludesMixins,
+            List<Field>? doughInputs,
+            List<Field>? enrichedInputs,
+            List<Field>? flourDispersionInputs,
+            List<Field>? mixinInputs,
+          })
+        > {
   @override
-  List<OutputFieldGroup> Function() build() {
+  List<OutputFieldGroup> Function({
+    bool isDoughWeightMode,
+    bool weightIncludesMixins,
+    List<Field>? doughInputs,
+    List<Field>? enrichedInputs,
+    List<Field>? flourDispersionInputs,
+    List<Field>? mixinInputs,
+  })
+  build() {
     // initial value
     return calculateYeastDough;
   }

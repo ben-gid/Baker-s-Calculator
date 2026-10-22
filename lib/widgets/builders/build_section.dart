@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
 Widget buildSection({
-  String? title, 
-  Widget? titleWidget, 
+  String? title,
+  Widget? titleWidget,
   required List<Widget> children,
 }) {
   late final MainAxisAlignment mainAxisAlignment;
   if (titleWidget == null) {
-     mainAxisAlignment = MainAxisAlignment.start;
+    mainAxisAlignment = MainAxisAlignment.start;
   } else {
-     mainAxisAlignment = MainAxisAlignment.spaceBetween;
+    mainAxisAlignment = MainAxisAlignment.spaceBetween;
   }
-  
+
   return Card(
     elevation: 2,
     margin: const EdgeInsets.symmetric(vertical: 12),
@@ -20,7 +20,7 @@ Widget buildSection({
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [ 
+        children: [
           Row(
             mainAxisAlignment: mainAxisAlignment,
             children: [
@@ -28,18 +28,16 @@ Widget buildSection({
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 18, 
-                    fontWeight: FontWeight.bold
-                  )
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              if (titleWidget != null)
-                 titleWidget,
-            ]
+              ?titleWidget,
+            ],
           ),
           const SizedBox(height: 12),
           ...children,
         ],
-        
       ),
     ),
   );

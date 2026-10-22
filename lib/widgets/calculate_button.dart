@@ -1,5 +1,6 @@
 import 'package:dough_calculator/models/field_models.dart';
 import 'package:dough_calculator/notifiers_and_providers/quick_calculater.dart';
+import 'package:dough_calculator/notifiers_and_providers/calculation_mode_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,9 +32,10 @@ class CalculateButton extends ConsumerWidget {
           if (form.validate()) {
             form.save(); // Triggers all onSaved callbacks
 
-            List<OutputFieldGroup> calculatedOutputFields = 
-                ref.watch(quickCalculateProvider)();
-                
+            List<OutputFieldGroup> calculatedOutputFields = ref.watch(
+              quickCalculateProvider,
+            )(isDoughWeightMode: ref.watch(calculationModeProvider));
+
             Navigator.pushNamed(
               context,
               "/calculatedRecipePage",

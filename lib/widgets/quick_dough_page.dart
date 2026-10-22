@@ -1,6 +1,7 @@
 import 'package:dough_calculator/repositories/data_to_calculate.dart';
 import 'package:dough_calculator/models/field_models.dart';
 import 'package:dough_calculator/notifiers_and_providers/quick_calculater.dart';
+import 'package:dough_calculator/notifiers_and_providers/calculation_mode_provider.dart';
 import 'package:dough_calculator/utils/constants.dart';
 import 'package:dough_calculator/utils/functions.dart';
 import 'package:dough_calculator/utils/quick_fields.dart';
@@ -33,11 +34,29 @@ class _QuickDoughPageState extends ConsumerState<QuickDoughPage> {
     });
   }
 
-  List<FieldGroup> _getDoughType() {
+  List<FieldGroup> _getDoughType(bool isDoughWeightMode) {
     final doughAsString = convertDoughIndex(selectedDough);
     switch (doughAsString) {
       case yeastBreadlabel:
-        return yeastInputFields;
+        if (!isDoughWeightMode) return yeastInputFields;
+
+        // Clone and modify for Dough Weight Mode
+        return yeastInputFields.map((group) {
+          return FieldGroup(
+            groupName: group.groupName,
+            fields: group.fields.map((field) {
+              // Replace "Flour" field with "Total Dough Weight"
+              if (field.label == flourLabel) {
+                return Field(
+                  label: doughLabel,
+                  valueType: valueGram,
+                  helperText: "Target total weight of the final dough",
+                );
+              }
+              return field;
+            }).toList(),
+          );
+        }).toList();
 
       case (sourDoughLabel):
         return sourdoughInputFields;
@@ -50,14 +69,26 @@ class _QuickDoughPageState extends ConsumerState<QuickDoughPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDoughWeightMode = ref.watch(calculationModeProvider);
+    final doughAsString = convertDoughIndex(selectedDough);
+    final showToggle = doughAsString == yeastBreadlabel;
+
     return Column(
       children: [
         DoughSelector(
           selectedDough: selectedDough,
           onDoughChanged: onDoughChanged,
         ),
+        if (showToggle)
+          SwitchListTile(
+            title: const Text("Calculate by Dough Weight"),
+            value: isDoughWeightMode,
+            onChanged: (val) {
+              ref.read(calculationModeProvider.notifier).toggle();
+            },
+          ),
         QuickDoughFormBuilder(
-          fieldGroups: _getDoughType(),
+          fieldGroups: _getDoughType(isDoughWeightMode),
           onSaved: _onDoughSaved,
         ),
       ],

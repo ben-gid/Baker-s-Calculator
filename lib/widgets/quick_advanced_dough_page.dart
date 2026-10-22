@@ -1,5 +1,5 @@
 import 'package:dough_calculator/models/field_models.dart';
-import 'package:dough_calculator/utils/quick_calculate_recipe.dart' as CalculateData;
+import 'package:dough_calculator/repositories/data_to_calculate.dart';
 import 'package:dough_calculator/widgets/enriched_dough_segment.dart';
 import 'package:dough_calculator/widgets/flour_dispersor.dart';
 import 'package:dough_calculator/widgets/mixin_switch.dart';
@@ -12,15 +12,9 @@ class QuickAdvancedDoughPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        FlourDispersor(
-          onSaved: onDispersionSaved,
-        ),
-        EnrichedDoughSegment(
-          onSaved: onEnrichedSaved,
-        ),
-        MixinSwitch(
-          onSaved: onMixinSaved,
-        ),
+        FlourDispersor(onSaved: onDispersionSaved),
+        EnrichedDoughSegment(onSaved: onEnrichedSaved),
+        MixinSwitch(onSaved: onMixinSaved),
       ],
     );
   }
