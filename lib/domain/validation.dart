@@ -34,13 +34,24 @@ enum RecipeField {
 
 class InputIssue {
   const InputIssue.error(this.field, this.message)
-    : severity = IssueSeverity.error;
+    : severity = IssueSeverity.error,
+      missing = null;
   const InputIssue.warning(this.field, this.message)
-    : severity = IssueSeverity.warning;
+    : severity = IssueSeverity.warning,
+      missing = null;
+
+  /// An empty box. Kept apart from other errors so the UI can gather every
+  /// blank into one "Needs flour weight, salt and yeast" line.
+  InputIssue.missing(this.field, String this.missing)
+    : severity = IssueSeverity.error,
+      message = '$missing is required';
 
   final RecipeField field;
   final String message;
   final IssueSeverity severity;
+
+  /// The label of the empty box, when that is the whole problem.
+  final String? missing;
 
   @override
   String toString() => '${severity.name}: ${field.name} — $message';
@@ -71,9 +82,7 @@ List<InputIssue> validate(RecipeInput input) {
   /// An empty box is an error, not a zero — the baker is allowed to clear a
   /// field, they just get no recipe until they refill it.
   void present(double? value, RecipeField field, String label) {
-    if (value == null) {
-      issues.add(InputIssue.error(field, '$label is required'));
-    }
+    if (value == null) issues.add(InputIssue.missing(field, label));
   }
 
   void required(double? value, RecipeField field, String label) {

@@ -43,6 +43,22 @@ void main() {
       );
     });
 
+    test('an empty box is reported as missing, with its label', () {
+      final issues = validate(
+        const RecipeInput(style: DoughStyle.classic, hydration: null),
+      );
+      final missing = issues.where((i) => i.missing != null);
+      expect(missing.map((i) => i.missing), [
+        'Flour weight',
+        'Yeast',
+        'Hydration',
+      ]);
+      expect(missing.first.message, 'Flour weight is required');
+      // Out of range is a different problem: it is not "missing".
+      final zero = validate(_classic.copyWith(flourWeight: 0));
+      expect(zero.single.missing, isNull);
+    });
+
     test('fields belonging to another style are not demanded', () {
       // Classic needs yeast; sourdough must not ask for it.
       expect(validate(_sourdough).forField(RecipeField.yeast), isEmpty);

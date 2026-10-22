@@ -4,9 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/spacing.dart';
 import '../../data/recipe_share.dart';
-import '../../domain/calculator.dart';
 import '../../state/providers.dart';
-import '../widgets/recipe_view.dart';
+import '../widgets/recipe_table.dart';
 import '../widgets/action_bar.dart';
 import '../widgets/panel.dart';
 
@@ -119,8 +118,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                 const SizedBox(height: Insets.xl),
                 Text(preview.name, style: theme.textTheme.headlineSmall),
                 const SizedBox(height: Insets.md),
-                RecipeView(
-                  recipe: calculate(preview.input),
+                RecipeSummary(
+                  input: preview.input,
                   unit: settings.unit,
                   showBakersPercent: settings.showBakersPercent,
                 ),

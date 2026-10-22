@@ -6,6 +6,7 @@ import '../../core/formatting.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../data/notification_service.dart';
+import '../../domain/models/active_bake.dart';
 import '../../domain/timeline.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
@@ -62,7 +63,9 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
       bottomNavigationBar: ActionBar(
         label: _scheduling ? 'Setting reminders' : 'Start bake',
         icon: Icons.notifications_active_outlined,
-        onPressed: _scheduling ? null : () => _startBake(recipe.name, steps),
+        onPressed: _scheduling
+            ? null
+            : () => _startBake(recipe.id, recipe.name, steps),
       ),
       body: SafeArea(
         child: ListView(
@@ -91,9 +94,19 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
     );
   }
 
-  Future<void> _startBake(String name, List<ScheduledStep> steps) async {
+  Future<void> _startBake(
+    String id,
+    String name,
+    List<ScheduledStep> steps,
+  ) async {
     setState(() => _scheduling = true);
     final messenger = ScaffoldMessenger.of(context);
+
+    // Recorded whatever happens to the reminders: a refused permission still
+    // leaves a bake under way, and Home can still count it down.
+    ref
+        .read(activeBakeProvider.notifier)
+        .start(ActiveBake(recipeId: id, recipeName: name, steps: steps));
 
     final ScheduleOutcome outcome = await ref
         .read(notificationServiceProvider)

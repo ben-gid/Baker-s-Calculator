@@ -5,84 +5,130 @@ import '../../core/formatting.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../domain/models/dough_style.dart';
+import '../../domain/models/recipe.dart';
 import '../../domain/models/recipe_input.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
-import '../widgets/action_bar.dart';
-import '../widgets/panel.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/number_field.dart';
-import '../widgets/recipe_view.dart';
+import '../widgets/panel.dart';
+import '../widgets/recipe_table.dart';
 import '../widgets/style_toggle.dart';
 import 'save_recipe_sheet.dart';
 
-/// One scrolling screen: pick a style, fill in what it needs, and the recipe
-/// updates underneath as you type.
+/// One screen, sized to fit a phone: the style, the batch, and the recipe as a
+/// single table whose weights fill in beside the percentages as you type.
 ///
-/// The original app split this across two pages behind a Calculate button and
-/// an "Advanced" step. Everything optional is now a collapsed card instead, so
-/// the first screen is short but nothing is hidden behind navigation.
-class CalculatorPage extends ConsumerWidget {
+/// It starts blank. Every box shows a typical range in grey instead of a
+/// number nobody chose, and the Template menu loads a built-in or saved recipe
+/// for anyone who wants a starting point.
+class CalculatorPage extends ConsumerStatefulWidget {
   const CalculatorPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CalculatorPage> createState() => _CalculatorPageState();
+}
+
+class _CalculatorPageState extends ConsumerState<CalculatorPage> {
+  /// Bumped whenever a template replaces the whole dough, so the table starts
+  /// over too — otherwise an empty Fat row the baker had opened would linger
+  /// into a recipe that has no fat.
+  int _generation = 0;
+
+  void _useTemplate(String id) {
+    final controller = ref.read(calculatorProvider.notifier);
+    final previous = ref.read(calculatorProvider);
+    final template = id == _TemplateMenu.blank
+        ? null
+        : ref.read(libraryProvider.notifier).byId(id);
+
+    if (template == null) {
+      controller.reset();
+    } else {
+      controller.load(template.input);
+    }
+    setState(() => _generation++);
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            template == null
+                ? 'Cleared the dough'
+                : 'Loaded "${template.name}"',
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              controller.load(previous);
+              if (mounted) setState(() => _generation++);
+            },
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final input = ref.watch(calculatorProvider);
     final issues = ref.watch(issuesProvider);
     final recipe = ref.watch(calculationProvider);
     final settings = ref.watch(settingsProvider);
-    final width = MediaQuery.sizeOf(context).width;
+    final controller = ref.read(calculatorProvider.notifier);
 
-    final form = _CalculatorForm(input: input, issues: issues);
-    final result = recipe == null
-        ? _BlockedResult(issues: issues)
-        : RecipeView(
-            recipe: recipe,
-            unit: settings.unit,
-            showBakersPercent: settings.showBakersPercent,
-          );
+    final controls = _Controls(input: input, issues: issues);
+    final table = RecipeTable(
+      key: ValueKey(_generation),
+      input: input,
+      recipe: recipe,
+      unit: settings.unit,
+      issues: issues,
+      onChanged: controller.load,
+    );
+    final result = _Result(recipe: recipe, issues: issues, unit: settings.unit);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Baker's Calculator"),
+        title: const Text('New dough'),
         actions: [
+          _TemplateMenu(onSelected: _useTemplate),
           IconButton(
-            icon: const Icon(Icons.restart_alt),
-            tooltip: 'Start over',
-            onPressed: () => ref.read(calculatorProvider.notifier).reset(),
+            icon: const Icon(Icons.bookmark_add_outlined),
+            tooltip: 'Save',
+            onPressed: recipe == null
+                ? null
+                : () => showSaveRecipeSheet(context, ref, input),
           ),
           const SizedBox(width: Insets.xs),
         ],
       ),
-      // The bar stays put and greys out while the recipe is blocked, rather
-      // than vanishing and shifting the form under the baker's thumb.
-      bottomNavigationBar: ActionBar(
-        label: 'Save',
-        icon: Icons.bookmark_add_outlined,
-        onPressed: recipe == null
-            ? null
-            : () => showSaveRecipeSheet(context, ref, input),
-      ),
       body: SafeArea(
-        child: width >= Breakpoints.tablet
-            // Wide screens put the live result beside the form so the numbers
-            // never scroll out of sight while typing.
+        child: MediaQuery.sizeOf(context).width >= Breakpoints.tablet
+            // Wide screens put the table beside the batch and the totals, so
+            // nothing is ever below anything else.
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _Scroll(child: form)),
-                  Expanded(child: _Scroll(child: result)),
+                  Expanded(child: _Scroll(children: [table])),
+                  Expanded(
+                    child: _Scroll(
+                      children: [
+                        controls,
+                        const SizedBox(height: Insets.md),
+                        result,
+                      ],
+                    ),
+                  ),
                 ],
               )
             : _Scroll(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    form,
-                    const SizedBox(height: Insets.xl),
-                    result,
-                  ],
-                ),
+                children: [
+                  controls,
+                  const SizedBox(height: Insets.md),
+                  table,
+                  const SizedBox(height: Insets.md),
+                  result,
+                ],
               ),
       ),
     );
@@ -90,17 +136,79 @@ class CalculatorPage extends ConsumerWidget {
 }
 
 class _Scroll extends StatelessWidget {
-  const _Scroll({required this.child});
+  const _Scroll({required this.children});
 
-  final Widget child;
+  final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) =>
-      SingleChildScrollView(padding: pagePadding(context), child: child);
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: pagePadding(context, top: Insets.sm),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    ),
+  );
 }
 
-class _CalculatorForm extends ConsumerWidget {
-  const _CalculatorForm({required this.input, required this.issues});
+/// Blank, the built-in recipes, then the baker's own.
+class _TemplateMenu extends ConsumerWidget {
+  const _TemplateMenu({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
+
+  /// Not a recipe id — those are generated, and never this.
+  static const blank = '';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final library = ref.watch(libraryProvider).value;
+
+    PopupMenuEntry<String> heading(String text) => PopupMenuItem(
+      enabled: false,
+      height: Insets.xl,
+      child: Text(text, style: theme.textTheme.labelSmall),
+    );
+
+    return PopupMenuButton<String>(
+      tooltip: 'Start from a template',
+      onSelected: onSelected,
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: blank, child: Text('Blank')),
+        if (library != null && library.system.isNotEmpty) ...[
+          heading('Built in'),
+          for (final recipe in library.system)
+            PopupMenuItem(value: recipe.id, child: Text(recipe.name)),
+        ],
+        if (library != null && library.saved.isNotEmpty) ...[
+          heading('Your recipes'),
+          for (final recipe in library.saved)
+            PopupMenuItem(value: recipe.id, child: Text(recipe.name)),
+        ],
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Template',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: theme.colorScheme.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Style, which weight drives the batch, and how many loaves. Grams or ounces
+/// is a Settings choice, not something to flip mid-recipe.
+class _Controls extends ConsumerWidget {
+  const _Controls({required this.input, required this.issues});
 
   final RecipeInput input;
   final List<InputIssue> issues;
@@ -108,34 +216,8 @@ class _CalculatorForm extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(calculatorProvider.notifier);
+    final forward = input.solvesForward;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _StyleSelector(style: input.style, onChanged: controller.setStyle),
-        const SizedBox(height: Insets.md),
-        _BatchCard(input: input),
-        const SizedBox(height: Insets.lg),
-        _DoughCard(input: input, issues: issues),
-        const SizedBox(height: Insets.md),
-        _FlourBlendCard(input: input, issues: issues),
-        const SizedBox(height: Insets.md),
-        _EnrichmentCard(input: input, issues: issues),
-        const SizedBox(height: Insets.md),
-        _MixInsCard(input: input, issues: issues),
-      ],
-    );
-  }
-}
-
-class _StyleSelector extends StatelessWidget {
-  const _StyleSelector({required this.style, required this.onChanged});
-
-  final DoughStyle style;
-  final ValueChanged<DoughStyle> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -144,520 +226,95 @@ class _StyleSelector extends StatelessWidget {
             for (final option in DoughStyle.values)
               ToggleOption(value: option, label: option.label),
           ],
-          selected: style,
-          onChanged: onChanged,
+          selected: input.style,
+          onChanged: controller.setStyle,
         ),
-        const SizedBox(height: Insets.sm),
-        Text(
-          style.blurb,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-class _DoughCard extends ConsumerWidget {
-  const _DoughCard({required this.input, required this.issues});
-
-  final RecipeInput input;
-  final List<InputIssue> issues;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-
-    return Panel(
-      title: 'Dough',
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: Insets.md),
-          child: StyleToggle<bool>(
-            options: const [
-              ToggleOption(value: true, label: 'Flour weight'),
-              ToggleOption(value: false, label: 'Dough weight'),
-            ],
-            selected: input.solvesForward,
-            onChanged: controller.setByFlourWeight,
-          ),
-        ),
-        if (input.solvesForward)
-          NumberField(
-            label: 'Flour weight',
-            suffix: 'g',
-            value: input.flourWeight,
-            helper: 'Typically 400–600 g per loaf',
-            issue: issues.firstFor(RecipeField.flourWeight),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(flourWeight: v)),
-          )
-        else
-          NumberField(
-            label: 'Total dough weight',
-            suffix: 'g',
-            value: input.totalDoughWeight,
-            helper: 'Everything combined — typically 700 g–1 kg per loaf',
-            issue: issues.firstFor(RecipeField.totalDoughWeight),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(totalDoughWeight: v)),
-          ),
-        NumberField(
-          label: 'Hydration',
-          suffix: '%',
-          value: input.hydration,
-          helper: 'Water as a percentage of the dough flour',
-          issue: issues.firstFor(RecipeField.hydration),
-          onChanged: (v) => controller.change((i) => i.copyWith(hydration: v)),
-        ),
-        NumberField(
-          label: 'Salt',
-          suffix: '%',
-          value: input.salt,
-          helper: 'Usually 1.8–2.2% of the dough flour',
-          issue: issues.firstFor(RecipeField.salt),
-          onChanged: (v) => controller.change((i) => i.copyWith(salt: v)),
-        ),
-        if (input.style == DoughStyle.classic)
-          NumberField(
-            label: 'Yeast',
-            suffix: '%',
-            value: input.yeast,
-            helper: 'Instant yeast, usually 1–2% of flour',
-            issue: issues.firstFor(RecipeField.yeast),
-            onChanged: (v) => controller.change((i) => i.copyWith(yeast: v)),
-          ),
-        if (input.style == DoughStyle.sourdough) ...[
-          NumberField(
-            label: 'Levain',
-            suffix: '%',
-            value: input.levainPercent,
-            helper: 'Levain as a percentage of the dough flour — typically 20%',
-            issue: issues.firstFor(RecipeField.levainPercent),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(levainPercent: v)),
-          ),
-          NumberField(
-            label: 'Levain hydration',
-            suffix: '%',
-            value: input.levainHydration,
-            helper: 'Water in the levain — typically 100%',
-            issue: issues.firstFor(RecipeField.levainHydration),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(levainHydration: v)),
-          ),
-        ],
-        if (input.style == DoughStyle.preferment) ...[
-          _PrefermentPresets(input: input),
-          NumberField(
-            label: 'Preferment',
-            suffix: '%',
-            value: input.prefermentPercent,
-            helper: 'Preferment as a percentage of the dough flour',
-            issue: issues.firstFor(RecipeField.prefermentPercent),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(prefermentPercent: v)),
-          ),
-          NumberField(
-            label: 'Preferment hydration',
-            suffix: '%',
-            value: input.prefermentHydration,
-            helper: 'Poolish is 100%, biga 50–60%',
-            issue: issues.firstFor(RecipeField.prefermentHydration),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(prefermentHydration: v)),
-          ),
-          NumberField(
-            label: 'Preferment yeast',
-            suffix: '%',
-            value: input.prefermentYeast,
-            helper: 'Yeast relative to the flour in the preferment',
-            issue: issues.firstFor(RecipeField.prefermentYeast),
-            onChanged: (v) =>
-                controller.change((i) => i.copyWith(prefermentYeast: v)),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// One tap for the three preferments a baker actually uses, instead of
-/// remembering three numbers each.
-class _PrefermentPresets extends ConsumerWidget {
-  const _PrefermentPresets({required this.input});
-
-  final RecipeInput input;
-
-  static const _presets = {
-    'Poolish': (percent: 30.0, hydration: 100.0, yeast: 0.2),
-    'Biga': (percent: 40.0, hydration: 55.0, yeast: 0.3),
-    'Pâte fermentée': (percent: 25.0, hydration: 65.0, yeast: 0.5),
-  };
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.lg),
-      child: Wrap(
-        spacing: Insets.sm,
-        children: [
-          for (final preset in _presets.entries)
-            ActionChip(
-              label: Text(preset.key),
-              onPressed: () => controller.change(
-                (i) => i.copyWith(
-                  prefermentPercent: preset.value.percent,
-                  prefermentHydration: preset.value.hydration,
-                  prefermentYeast: preset.value.yeast,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FlourBlendCard extends ConsumerWidget {
-  const _FlourBlendCard({required this.input, required this.issues});
-
-  final RecipeInput input;
-  final List<InputIssue> issues;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-    final blend = input.flourBlend;
-    final issue = issues.firstFor(RecipeField.flourBlend);
-    final total = blend.fold(0.0, (sum, part) => sum + (part.percent ?? 0));
-
-    void setBlend(List<FlourPart> next) =>
-        controller.change((i) => i.copyWith(flourBlend: next));
-
-    return DisclosurePanel(
-      title: 'Flour blend',
-      subtitle: 'Mix two or more flours',
-      initiallyExpanded: blend.isNotEmpty,
-      badge: blend.isEmpty ? null : '${blend.length} flours',
-      children: [
-        if (blend.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.sm),
-            child: Text(
-              'One flour is assumed unless you add a blend.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        for (var index = 0; index < blend.length; index++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.md),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: NameField(
-                    label: 'Flour ${index + 1}',
-                    showLabel: false,
-                    value: blend[index].name,
-                    onChanged: (name) => setBlend([
-                      for (var i = 0; i < blend.length; i++)
-                        i == index ? blend[i].copyWith(name: name) : blend[i],
-                    ]),
-                  ),
-                ),
-                const SizedBox(width: Insets.sm),
-                Expanded(
-                  flex: 2,
-                  child: NumberField(
-                    dense: true,
-                    suffix: '%',
-                    value: blend[index].percent,
-                    onChanged: (percent) => setBlend([
-                      for (var i = 0; i < blend.length; i++)
-                        i == index
-                            ? blend[i].copyWith(percent: percent)
-                            : blend[i],
-                    ]),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  tooltip: 'Remove ${blend[index].name}',
-                  onPressed: () => setBlend([
-                    for (var i = 0; i < blend.length; i++)
-                      if (i != index) blend[i],
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        if (issue != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.sm),
-            child: Text(
-              issue.message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          )
-        else if (blend.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.sm),
-            child: Text(
-              'Total ${formatPercent(total)}',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Add flour'),
-            onPressed: () => setBlend([
-              ...blend,
-              // Suggest the remainder so two flours land on 100% by default.
-              FlourPart(
-                name: blend.isEmpty ? 'Bread flour' : '',
-                percent: blend.isEmpty ? 100 : (100 - total).clamp(0, 100),
-              ),
-            ]),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EnrichmentCard extends ConsumerWidget {
-  const _EnrichmentCard({required this.input, required this.issues});
-
-  final RecipeInput input;
-  final List<InputIssue> issues;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-    final enrichment = input.enrichmentOrEmpty;
-    final active = <String>{
-      if (enrichment.fatPercent != null) 'fat',
-      if (enrichment.sugarPercent != null) 'sugar',
-      if (enrichment.eggCount != null) 'eggs',
-    };
-
-    void set(Enrichment next) => controller.change(
-      (i) => i.copyWith(enrichment: next.isEmpty ? null : next),
-    );
-
-    return DisclosurePanel(
-      title: 'Enrich',
-      subtitle: 'Fat, sugar and eggs',
-      initiallyExpanded: active.isNotEmpty,
-      badge: active.isEmpty ? null : '${active.length} added',
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: Insets.lg),
-          child: Wrap(
-            spacing: Insets.sm,
-            children: [
-              FilterChip(
-                label: const Text('Fat'),
-                selected: active.contains('fat'),
-                onSelected: (on) =>
-                    set(enrichment.copyWith(fatPercent: on ? 8 : null)),
-              ),
-              FilterChip(
-                label: const Text('Sugar'),
-                selected: active.contains('sugar'),
-                onSelected: (on) =>
-                    set(enrichment.copyWith(sugarPercent: on ? 6 : null)),
-              ),
-              FilterChip(
-                label: const Text('Eggs'),
-                selected: active.contains('eggs'),
-                onSelected: (on) =>
-                    set(enrichment.copyWith(eggCount: on ? 1 : null)),
-              ),
-            ],
-          ),
-        ),
-        if (active.contains('fat'))
-          NumberField(
-            label: 'Fat',
-            suffix: '%',
-            value: enrichment.fatPercent,
-            helper: 'Butter, oil — as a percentage of flour',
-            issue: issues.firstFor(RecipeField.fat),
-            onChanged: (v) => set(enrichment.copyWith(fatPercent: v)),
-          ),
-        if (active.contains('sugar'))
-          NumberField(
-            label: 'Sugar',
-            suffix: '%',
-            value: enrichment.sugarPercent,
-            helper: 'Sugar, honey — as a percentage of flour',
-            issue: issues.firstFor(RecipeField.sugar),
-            onChanged: (v) => set(enrichment.copyWith(sugarPercent: v)),
-          ),
-        if (active.contains('eggs'))
-          NumberField(
-            label: 'Eggs',
-            value: enrichment.eggCount,
-            helper: 'Large eggs, counted — ${gramsPerEgg.round()} g each',
-            issue: issues.firstFor(RecipeField.eggs),
-            onChanged: (v) => set(enrichment.copyWith(eggCount: v)),
-          ),
-      ],
-    );
-  }
-}
-
-class _MixInsCard extends ConsumerWidget {
-  const _MixInsCard({required this.input, required this.issues});
-
-  final RecipeInput input;
-  final List<InputIssue> issues;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-    final mixIns = input.mixIns;
-
-    void setMixIns(List<MixIn> next) =>
-        controller.change((i) => i.copyWith(mixIns: next));
-
-    return DisclosurePanel(
-      title: 'Mix-ins',
-      subtitle: 'Seeds, nuts, cheese, olives',
-      initiallyExpanded: mixIns.isNotEmpty,
-      badge: mixIns.isEmpty ? null : '${mixIns.length} added',
-      children: [
-        for (var index = 0; index < mixIns.length; index++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.md),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: NameField(
-                    label: 'Mix-in ${index + 1}',
-                    showLabel: false,
-                    value: mixIns[index].name,
-                    onChanged: (name) => setMixIns([
-                      for (var i = 0; i < mixIns.length; i++)
-                        i == index ? mixIns[i].copyWith(name: name) : mixIns[i],
-                    ]),
-                  ),
-                ),
-                const SizedBox(width: Insets.sm),
-                Expanded(
-                  flex: 2,
-                  child: NumberField(
-                    dense: true,
-                    suffix: '%',
-                    value: mixIns[index].percent,
-                    onChanged: (percent) => setMixIns([
-                      for (var i = 0; i < mixIns.length; i++)
-                        i == index
-                            ? mixIns[i].copyWith(percent: percent)
-                            : mixIns[i],
-                    ]),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  tooltip: 'Remove ${mixIns[index].name}',
-                  onPressed: () => setMixIns([
-                    for (var i = 0; i < mixIns.length; i++)
-                      if (i != index) mixIns[i],
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        if (issues.firstFor(RecipeField.mixIns) case final issue?)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Insets.sm),
-            child: Text(
-              issue.message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Add mix-in'),
-            onPressed: () =>
-                setMixIns([...mixIns, const MixIn(name: '', percent: 10)]),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BatchCard extends ConsumerWidget {
-  const _BatchCard({required this.input});
-
-  final RecipeInput input;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(calculatorProvider.notifier);
-    final settings = ref.watch(settingsProvider);
-
-    return Panel(
-      title: 'Batch',
-      trailing: SizedBox(
-        width: 116,
-        child: StyleToggle<MassUnit>(
-          compact: true,
-          options: [
-            for (final unit in MassUnit.values)
-              ToggleOption(value: unit, label: unit.symbol),
-          ],
-          selected: settings.unit,
-          onChanged: ref.read(settingsProvider.notifier).setUnit,
-        ),
-      ),
-      children: [
-        Row(
+        const SizedBox(height: Insets.md),
+        Panel(
+          padding: const EdgeInsets.all(Insets.md),
           children: [
-            // Expanded rather than Spacer: at narrow widths the label has to
-            // give way to the stepper, not push it off the card.
-            Expanded(
-              child: Text(
-                'Loaves',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+            Row(
+              children: [
+                SizedBox(
+                  width: 148,
+                  child: StyleToggle<bool>(
+                    compact: true,
+                    options: const [
+                      ToggleOption(value: true, label: 'Flour'),
+                      ToggleOption(value: false, label: 'Dough'),
+                    ],
+                    selected: forward,
+                    onChanged: controller.setByFlourWeight,
+                  ),
+                ),
+                const SizedBox(width: Insets.sm),
+                Expanded(
+                  // One box for whichever weight is driving, so the row
+                  // never holds a number the recipe is not reading.
+                  child: forward
+                      ? NumberField(
+                          label: 'Flour weight',
+                          showLabel: false,
+                          dense: true,
+                          hint: '400–600',
+                          suffix: 'g',
+                          value: input.flourWeight,
+                          issue: issues.firstFor(RecipeField.flourWeight),
+                          onChanged: (v) => controller.change(
+                            (i) => i.copyWith(flourWeight: v),
+                          ),
+                        )
+                      : NumberField(
+                          label: 'Dough weight',
+                          showLabel: false,
+                          dense: true,
+                          hint: '700–1000',
+                          suffix: 'g',
+                          value: input.totalDoughWeight,
+                          issue: issues.firstFor(RecipeField.totalDoughWeight),
+                          onChanged: (v) => controller.change(
+                            (i) => i.copyWith(totalDoughWeight: v),
+                          ),
+                        ),
+                ),
+              ],
             ),
-            IconButton.outlined(
-              icon: const Icon(Icons.remove),
-              tooltip: 'One fewer loaf',
-              onPressed: input.loaves <= 1
-                  ? null
-                  : () => controller.change(
-                      (i) => i.copyWith(loaves: i.loaves - 1),
-                    ),
-            ),
-            SizedBox(
-              width: 40,
-              child: Text(
-                '${input.loaves}',
-                textAlign: TextAlign.center,
-                style: numeric(Theme.of(context).textTheme.titleLarge),
-              ),
-            ),
-            IconButton.outlined(
-              icon: const Icon(Icons.add),
-              tooltip: 'One more loaf',
-              onPressed: () =>
-                  controller.change((i) => i.copyWith(loaves: i.loaves + 1)),
+            const SizedBox(height: Insets.sm),
+            Row(
+              children: [
+                // Expanded rather than Spacer: at narrow widths the label has
+                // to give way to the stepper, not push it off the panel.
+                Expanded(
+                  child: Text(
+                    'Loaves',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                IconButton.outlined(
+                  icon: const Icon(Icons.remove),
+                  tooltip: 'One fewer loaf',
+                  onPressed: input.loaves <= 1
+                      ? null
+                      : () => controller.change(
+                          (i) => i.copyWith(loaves: i.loaves - 1),
+                        ),
+                ),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    '${input.loaves}',
+                    textAlign: TextAlign.center,
+                    style: numeric(Theme.of(context).textTheme.titleLarge),
+                  ),
+                ),
+                IconButton.outlined(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'One more loaf',
+                  onPressed: () => controller.change(
+                    (i) => i.copyWith(loaves: i.loaves + 1),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -666,29 +323,68 @@ class _BatchCard extends ConsumerWidget {
   }
 }
 
-/// Shown in place of the recipe when the input cannot be calculated. Lists the
-/// blocking problems so the fix is obvious without hunting up the form.
-class _BlockedResult extends StatelessWidget {
-  const _BlockedResult({required this.issues});
+/// The totals once the recipe works; until then, what it still needs. Warnings
+/// sit underneath either way — they are advice and never take the totals'
+/// place.
+class _Result extends StatelessWidget {
+  const _Result({
+    required this.recipe,
+    required this.issues,
+    required this.unit,
+  });
 
+  final Recipe? recipe;
   final List<InputIssue> issues;
+  final MassUnit unit;
 
   @override
   Widget build(BuildContext context) {
-    final errors = issues
-        .where((i) => i.severity == IssueSeverity.error)
-        .toList();
-    return Panel(
-      title: 'Recipe',
+    final theme = Theme.of(context);
+    final baking = theme.extension<BakingColors>()!;
+    final recipe = this.recipe;
+    final errors = issues.where((i) => i.severity == IssueSeverity.error);
+    final missing = [for (final e in errors) ?e.missing?.toLowerCase()];
+    final warnings = issues.where((i) => i.severity == IssueSeverity.warning);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        EmptyState(
-          icon: Icons.edit_note,
-          title: errors.length == 1
-              ? 'One thing to fix'
-              : '${errors.length} things to fix',
-          message: errors.map((e) => e.message).join('\n'),
-        ),
+        if (recipe != null)
+          TotalsPanel(recipe: recipe, unit: unit)
+        else
+          Panel(
+            children: [
+              if (missing.isNotEmpty)
+                Text(
+                  'Needs ${_sentence(missing)}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              for (final error in errors.where((e) => e.missing == null))
+                Padding(
+                  padding: const EdgeInsets.only(top: Insets.xs),
+                  child: Text(
+                    error.message,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        for (final warning in warnings)
+          Padding(
+            padding: const EdgeInsets.only(top: Insets.sm, left: Insets.xs),
+            child: Text(
+              warning.message,
+              style: theme.textTheme.bodySmall?.copyWith(color: baking.warn),
+            ),
+          ),
       ],
     );
   }
 }
+
+/// `salt`, `salt and yeast`, `hydration, salt and yeast`.
+String _sentence(List<String> items) => items.length == 1
+    ? items.single
+    : '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';

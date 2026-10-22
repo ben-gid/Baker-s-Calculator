@@ -61,8 +61,10 @@ class FakeNotifications implements NotificationService {
     return outcome;
   }
 
+  bool cancelled = false;
+
   @override
-  Future<void> cancelBake() async {}
+  Future<void> cancelBake() async => cancelled = true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -123,7 +125,7 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  /// Boots into the default 900 g sourdough, which every test starts from.
+  /// Boots onto Home.
   Future<void> boot(WidgetTester tester, {RecipeRepository? store}) async {
     usePhoneScreen(tester);
     await tester.pumpWidget(app(store: store));
@@ -154,6 +156,20 @@ void main() {
     matching: find.widgetWithText(FilledButton, label),
   );
 
+  Future<void> openNewDough(WidgetTester tester) async {
+    await tester.tap(find.text('New dough'));
+    await tester.pumpAndSettle();
+  }
+
+  /// 500 g flour at 70% water, 2% salt, 1% yeast: an 865 g classic loaf.
+  Future<void> fillClassic(WidgetTester tester) async {
+    await tester.enterText(fieldNamed('Flour weight'), '500');
+    await tester.enterText(fieldNamed('Hydration'), '70');
+    await tester.enterText(fieldNamed('Salt'), '2');
+    await tester.enterText(fieldNamed('Yeast'), '1');
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openRecipesTab(WidgetTester tester) async {
     await tester.tap(find.text('Recipes'));
     await tester.pumpAndSettle();
@@ -168,62 +184,93 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('boots straight into a calculated recipe', (tester) async {
+  testWidgets('boots onto Home', (tester) async {
     await boot(tester);
 
     expect(find.text("Baker's Calculator"), findsOneWidget);
-    // Not an empty form: the starting values already make a real loaf.
-    expect(find.text('Levain'), findsWidgets);
-    expect(find.text('Total dough'), findsOneWidget);
-    expect(find.text('900 g'), findsOneWidget);
+    expect(find.text('New dough'), findsOneWidget);
+    // Nothing saved yet, so the carousel offers the built-ins instead.
+    expect(find.text('Built in'), findsOneWidget);
+    expect(find.text('Country Sourdough'), findsOneWidget);
   });
 
-  testWidgets('typing a new dough weight recalculates without a button', (
+  testWidgets('a new dough starts blank and says what it needs', (
     tester,
   ) async {
     await boot(tester);
+    await openNewDough(tester);
 
-    await tester.enterText(fieldNamed('Total dough weight'), '1800');
-    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(fieldNamed('Flour weight')).controller!.text,
+      isEmpty,
+    );
+    expect(
+      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      isEmpty,
+    );
+    expect(find.text('Total dough'), findsNothing);
+    expect(
+      find.text('Needs flour weight, yeast, hydration and salt'),
+      findsOneWidget,
+    );
+    // The weights column holds its place rather than vanishing.
+    expect(find.text('—'), findsNWidgets(4));
+  });
 
-    expect(find.text('1800 g'), findsOneWidget);
+  testWidgets('filling in the blanks calculates without a button', (
+    tester,
+  ) async {
+    await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
+
+    // 500 + 350 + 10 + 5, and each weight beside its percentage.
+    expect(find.text('865 g'), findsOneWidget);
+    expect(find.text('350 g'), findsWidgets);
+    expect(find.text('Total dough'), findsOneWidget);
   });
 
   testWidgets('an unusable value blocks the recipe and says why', (
     tester,
   ) async {
     await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
 
-    await tester.enterText(fieldNamed('Total dough weight'), '0');
+    await tester.enterText(fieldNamed('Flour weight'), '0');
     await tester.pumpAndSettle();
 
     expect(find.text('Total dough'), findsNothing);
-    expect(find.textContaining('greater than zero'), findsWidgets);
+    expect(find.textContaining('greater than zero'), findsOneWidget);
   });
 
   testWidgets('a field can be emptied and retyped', (tester) async {
     await boot(tester);
-    final field = fieldNamed('Total dough weight');
+    await openNewDough(tester);
+    await fillClassic(tester);
+    final field = fieldNamed('Flour weight');
 
     await tester.enterText(field, '');
     await tester.pumpAndSettle();
 
     // The box stays empty instead of typing the old value back in — otherwise
-    // 900 -> 1000 means backspacing to "9", typing "1000", and deleting the 9.
+    // 500 -> 1000 means backspacing to "5", typing "1000", and deleting the 5.
     expect(tester.widget<TextField>(field).controller!.text, isEmpty);
     expect(find.text('Total dough'), findsNothing);
-    expect(find.textContaining('Dough weight is required'), findsWidgets);
+    expect(find.text('Needs flour weight'), findsOneWidget);
 
     await tester.enterText(field, '1000');
     await tester.pumpAndSettle();
 
-    expect(find.text('1000 g'), findsOneWidget);
+    expect(find.text('1730 g'), findsOneWidget);
   });
 
   testWidgets('an unusual but workable value warns without blocking', (
     tester,
   ) async {
     await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
 
     await tester.enterText(fieldNamed('Hydration'), '99');
     await tester.pumpAndSettle();
@@ -233,48 +280,104 @@ void main() {
     expect(find.text('Total dough'), findsOneWidget);
   });
 
-  testWidgets('switching dough style swaps the fields it needs', (
+  testWidgets('switching style swaps the rows and keeps what was typed', (
     tester,
   ) async {
     await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
+
+    await tester.tap(find.text('Sourdough'));
+    await tester.pumpAndSettle();
+
+    expect(fieldNamed('Yeast'), findsNothing);
     expect(fieldNamed('Levain'), findsOneWidget);
+    // Sourdough solves from the dough weight, and nothing is filled in for it.
+    expect(fieldNamed('Dough weight'), findsOneWidget);
+    expect(
+      find.text('Needs dough weight, levain and levain hydration'),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      '70',
+    );
 
     await tester.tap(find.text('Classic'));
     await tester.pumpAndSettle();
-
-    expect(fieldNamed('Levain'), findsNothing);
-    expect(fieldNamed('Flour weight'), findsOneWidget);
-    expect(fieldNamed('Yeast'), findsOneWidget);
-    expect(find.text('Total dough'), findsOneWidget);
+    expect(find.text('865 g'), findsOneWidget);
   });
 
   testWidgets('the loaf stepper scales the batch', (tester) async {
     await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
 
-    // The batch card sits below the fold on a phone.
-    await tester.ensureVisible(find.byTooltip('One more loaf'));
-    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('One more loaf'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1800 g'), findsOneWidget);
+    expect(find.text('1730 g'), findsOneWidget);
     expect(find.textContaining('Each'), findsOneWidget);
   });
 
-  testWidgets('the optional sections start collapsed and open on tap', (
+  testWidgets('a template fills the dough, and Undo takes it back', (
     tester,
   ) async {
     await boot(tester);
+    await openNewDough(tester);
 
-    // Collapsed: the card announces itself, but none of its controls are built.
-    expect(find.text('Flour blend'), findsOneWidget);
-    expect(find.text('Add flour'), findsNothing);
+    await tester.tap(find.text('Template'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Country Sourdough').last);
+    await tester.pumpAndSettle();
 
-    await tapVisible(tester, find.text('Flour blend'));
-    expect(find.text('Add flour'), findsOneWidget);
+    expect(find.text('Total dough'), findsOneWidget);
+    expect(find.text('900 g'), findsOneWidget);
+    expect(find.text('Bread flour'), findsWidgets);
 
-    await tapVisible(tester, find.text('Add flour'));
-    expect(fieldNamed('Flour 1'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total dough'), findsNothing);
+    expect(find.text('Bread flour'), findsNothing);
+  });
+
+  testWidgets('ingredients are added as rows, and an empty one stays put', (
+    tester,
+  ) async {
+    await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
+
+    await tapVisible(tester, find.text('Add ingredient'));
+    await tester.tap(find.text('Fat').last);
+    await tester.pumpAndSettle();
+
+    // Added empty: the box is there, and the recipe still works without it.
+    expect(fieldNamed('Fat'), findsOneWidget);
+    expect(find.text('Total dough'), findsOneWidget);
+
+    await tester.enterText(fieldNamed('Fat'), '10');
+    await tester.pumpAndSettle();
+    expect(find.text('915 g'), findsOneWidget);
+
+    // Clearing the box must not take the row away mid-edit.
+    await tester.enterText(fieldNamed('Fat'), '');
+    await tester.pumpAndSettle();
+    expect(fieldNamed('Fat'), findsOneWidget);
+
+    await tapVisible(tester, find.text('Add ingredient'));
+    await tester.tap(find.text('Mix-in').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Name every mix-in'), findsOneWidget);
+
+    await tester.enterText(fieldNamed('Mix-in 1'), 'Seeds');
+    await tester.enterText(fieldNamed('Mix-in 1 share'), '10');
+    await tester.pumpAndSettle();
+    expect(find.text('915 g'), findsOneWidget);
+
+    await tapVisible(tester, find.byTooltip('Remove Seeds'));
+    expect(find.text('865 g'), findsOneWidget);
   });
 
   testWidgets('the library ships with built-in recipes and no saved ones', (
@@ -290,8 +393,10 @@ void main() {
 
   testWidgets('saving a recipe stores it and lists it', (tester) async {
     await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
 
-    await tester.tap(actionBar('Save'));
+    await tester.tap(find.byTooltip('Save'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -309,7 +414,33 @@ void main() {
     // And it really reached the store, not just the screen.
     expect(repository.saveCount, 1);
     expect(repository.recipes.single.name, 'Saturday loaf');
-    expect(repository.recipes.single.input.totalDoughWeight, 900);
+    expect(repository.recipes.single.input.flourWeight, 500);
+  });
+
+  testWidgets('Home leads back to the dough and lists what was saved', (
+    tester,
+  ) async {
+    await boot(tester);
+    await openNewDough(tester);
+    await fillClassic(tester);
+    await tester.tap(find.byTooltip('Save'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('save-recipe-name')),
+      'Saturday loaf',
+    );
+    await tester.tap(sheetButton('Save'));
+    await tester.pumpAndSettle();
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recent'), findsOneWidget);
+    expect(find.text('Saturday loaf'), findsOneWidget);
+
+    await tester.tap(find.text('Back to your 865 g dough'));
+    await tester.pumpAndSettle();
+    expect(find.text('865 g'), findsOneWidget);
   });
 
   testWidgets('saving before the library has loaded does not lose recipes', (
@@ -321,14 +452,16 @@ void main() {
       SavedRecipe(
         id: 'existing',
         name: 'Last week',
-        input: startingPoint,
+        input: fixtureSystemRecipes.single.input,
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),
       ),
     ];
 
     await boot(tester);
-    await tester.tap(actionBar('Save'));
+    await openNewDough(tester);
+    await fillClassic(tester);
+    await tester.tap(find.byTooltip('Save'));
     await tester.pumpAndSettle();
     await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
@@ -367,7 +500,7 @@ void main() {
     await tester.tap(find.byTooltip('Open in calculator'));
     await tester.pumpAndSettle();
 
-    expect(fieldNamed('Total dough weight'), findsOneWidget);
+    expect(fieldNamed('Dough weight'), findsOneWidget);
     // The built-in is a 90/10 blend, so the calculator should show both flours.
     expect(find.text('Bread flour'), findsWidgets);
   });
@@ -417,6 +550,25 @@ void main() {
 
     expect(notifications.scheduled, isNotNull);
     expect(find.textContaining('Reminders set'), findsOneWidget);
+
+    // Home now shows the bake under way, until it is stopped.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stop bake'), findsOneWidget);
+    expect(find.textContaining('Autolyse'), findsOneWidget);
+    expect(settings.readActiveBake()?.recipeName, 'Country Sourdough');
+
+    await tester.tap(find.text('Stop bake'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stop bake'), findsNothing);
+    expect(notifications.cancelled, isTrue);
+    expect(settings.readActiveBake(), isNull);
   });
 
   testWidgets('a refused notification permission does not break the plan', (
@@ -462,7 +614,7 @@ void main() {
     expect(repository.recipes.single.input.style, DoughStyle.classic);
   });
 
-  testWidgets('wide screens show the form and the result side by side', (
+  testWidgets('wide screens show the table and the totals side by side', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 900);
@@ -470,6 +622,11 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await openNewDough(tester);
+    await tester.tap(find.text('Template'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Country Sourdough').last);
     await tester.pumpAndSettle();
 
     // A rail instead of a bottom bar, and the recipe visible without scrolling.

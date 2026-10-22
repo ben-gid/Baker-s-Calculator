@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/spacing.dart';
-import '../../domain/calculator.dart';
 import '../../domain/models/dough_style.dart';
 import '../../domain/wizard.dart';
 import '../../state/providers.dart';
 import '../widgets/action_bar.dart';
 import '../widgets/panel.dart';
-import '../widgets/recipe_view.dart';
+import '../widgets/recipe_table.dart';
 import '../widgets/style_toggle.dart';
 
 /// "Make me a recipe" in four choices.
@@ -142,8 +141,8 @@ class _WizardPageState extends ConsumerState<WizardPage> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: Insets.md),
-            RecipeView(
-              recipe: calculate(input),
+            RecipeSummary(
+              input: input,
               unit: settings.unit,
               showBakersPercent: settings.showBakersPercent,
             ),

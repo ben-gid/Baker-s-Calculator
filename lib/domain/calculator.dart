@@ -57,7 +57,7 @@ Recipe _classic(RecipeInput input) {
   final yeast = _require(input.yeast, 'yeast');
   final doughFlour = input.solvesForward
       ? _require(input.flourWeight, 'flourWeight')
-      : _solveDoughFlour(input, _denominator(input, hydration, salt, 0));
+      : _solveDoughFlour(input, _denominator(input, hydration, salt, yeast));
   final water = doughFlour * hydration / 100;
 
   final dough = <Ingredient>[
@@ -72,6 +72,7 @@ Recipe _classic(RecipeInput input) {
   return _assemble(
     groups: [IngredientGroup(name: 'Dough', ingredients: dough)],
     input: input,
+    doughFlour: doughFlour,
     totalFlour: doughFlour,
     totalWater: water,
   );
@@ -129,6 +130,7 @@ Recipe _sourdough(RecipeInput input) {
       ),
     ],
     input: input,
+    doughFlour: doughFlour,
     totalFlour: doughFlour + levainFlour,
     totalWater: water + levainWater,
   );
@@ -185,6 +187,7 @@ Recipe _preferment(RecipeInput input) {
       ),
     ],
     input: input,
+    doughFlour: doughFlour,
     totalFlour: doughFlour + prefermentFlour,
     totalWater: water + prefermentWater,
   );
@@ -192,8 +195,13 @@ Recipe _preferment(RecipeInput input) {
 
 /// Everything the dough weighs, per gram of dough flour. Mix-ins are left out
 /// on purpose: "total dough weight" is the dough, and seeds or olives are added
-/// on top of it. [input.yeast] only has a value for [DoughStyle.classic] — it
-/// is null, hence 0, for the other two styles' own denominator.
+/// on top of it.
+///
+/// [leavenPercent] is whatever leavens this style — classic's yeast, the
+/// levain, or the preferment. It is passed in rather than read off [input]
+/// because fields belonging to another style are kept, not cleared: a yeast
+/// typed under classic is still on a sourdough input, and reading it here
+/// shrank the flour for a row the recipe never shows.
 double _denominator(
   RecipeInput input,
   double hydration,
@@ -205,7 +213,6 @@ double _denominator(
       hydration / 100 +
       salt / 100 +
       leavenPercent / 100 +
-      (input.yeast ?? 0) / 100 +
       (enrichment.fatPercent ?? 0) / 100 +
       (enrichment.sugarPercent ?? 0) / 100;
 }
@@ -276,6 +283,7 @@ List<Ingredient> _mixInRows(RecipeInput input, double doughFlour) => [
 Recipe _assemble({
   required List<IngredientGroup> groups,
   required RecipeInput input,
+  required double doughFlour,
   required double totalFlour,
   required double totalWater,
 }) {
@@ -287,5 +295,6 @@ Recipe _assemble({
     totalWater: totalWater,
     hydration: totalFlour == 0 ? 0 : totalWater / totalFlour * 100,
     loaves: input.loaves,
+    doughFlour: doughFlour,
   );
 }

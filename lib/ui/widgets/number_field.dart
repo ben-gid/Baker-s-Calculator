@@ -27,11 +27,21 @@ class NumberField extends StatefulWidget {
     required this.onChanged,
     this.suffix,
     this.helper,
+    this.hint,
     this.issue,
     this.dense = false,
+    this.showLabel = true,
   });
 
   final String? label;
+
+  /// False keeps [label] for screen readers but prints nothing above the box,
+  /// for a field that sits in a row whose own text already names it.
+  final bool showLabel;
+
+  /// Greyed inside the empty box — a typical range such as `65–80`. A range
+  /// rather than a number, so it can never be mistaken for something typed.
+  final String? hint;
   final double? value;
   final ValueChanged<double?> onChanged;
 
@@ -85,7 +95,9 @@ class _NumberFieldState extends State<NumberField> {
 
     // Warnings are advisory, so they colour the rule and the message amber
     // rather than using the error slot, which would imply the recipe is blocked.
-    final Color? stateColor = issue == null
+    // A box that is merely empty is not outlined at all: a blank dough is all
+    // empty boxes, and a page of red rules would read as a page of mistakes.
+    final Color? stateColor = issue == null || issue.missing != null
         ? null
         : isWarning
         ? baking.warn
@@ -96,7 +108,7 @@ class _NumberFieldState extends State<NumberField> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.label != null) ...[
+          if (widget.label != null && widget.showLabel) ...[
             // Visual only — the field itself carries the label for screen
             // readers below.
             ExcludeSemantics(
@@ -118,13 +130,29 @@ class _NumberFieldState extends State<NumberField> {
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
-              style: numeric(theme.textTheme.bodyLarge),
+              style: numeric(
+                widget.dense
+                    ? theme.textTheme.bodyMedium
+                    : theme.textTheme.bodyLarge,
+              ),
               onChanged: (raw) => widget.onChanged(parseNumber(raw)),
               decoration: InputDecoration(
                 isDense: widget.dense,
+                hintText: widget.hint,
+                hintStyle: numeric(
+                  widget.dense
+                      ? theme.textTheme.bodySmall
+                      : theme.textTheme.bodyMedium,
+                ).copyWith(color: theme.colorScheme.onSurfaceVariant),
+                contentPadding: widget.dense
+                    ? const EdgeInsets.symmetric(
+                        horizontal: Insets.sm,
+                        vertical: Insets.md,
+                      )
+                    : null,
                 suffixIcon: widget.suffix == null
                     ? null
-                    : _Unit(text: widget.suffix!),
+                    : _Unit(text: widget.suffix!, dense: widget.dense),
                 suffixIconConstraints: const BoxConstraints(minHeight: 0),
                 enabledBorder: stateColor == null
                     ? null
@@ -157,15 +185,18 @@ class _NumberFieldState extends State<NumberField> {
 /// The unit sitting at the trailing edge of the box, muted so the value keeps
 /// the eye. No divider: nothing in the app is ruled any more.
 class _Unit extends StatelessWidget {
-  const _Unit({required this.text});
+  const _Unit({required this.text, required this.dense});
 
   final String text;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(right: Insets.lg, left: Insets.sm),
+      padding: dense
+          ? const EdgeInsets.only(right: Insets.sm, left: Insets.xs)
+          : const EdgeInsets.only(right: Insets.lg, left: Insets.sm),
       child: Text(
         text,
         style: numeric(
@@ -238,9 +269,18 @@ class _NameFieldState extends State<NameField> {
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.next,
             onChanged: widget.onChanged,
+            // Without a printed label it sits in a table row, beside a dense
+            // NumberField, so it takes the same size and padding.
+            style: widget.showLabel ? null : theme.textTheme.bodyMedium,
             decoration: InputDecoration(
               isDense: true,
               hintText: widget.showLabel ? null : widget.label,
+              contentPadding: widget.showLabel
+                  ? null
+                  : const EdgeInsets.symmetric(
+                      horizontal: Insets.sm,
+                      vertical: Insets.md,
+                    ),
             ),
           ),
         ),

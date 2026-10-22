@@ -109,8 +109,8 @@ class _RecipeList extends StatelessWidget {
             ? 'No recipes yet'
             : 'Nothing matches "${state.query}"',
         message: state.query.isEmpty
-            ? 'Work one out on the Calculate tab and save it, or start from one '
-                  'of the built-in recipes.'
+            ? 'Start a new dough from Home and save it, or start from one of '
+                  'the built-in recipes.'
             : 'Try a different name, flour or dough style.',
         actionLabel: state.query.isEmpty ? 'Suggest a recipe' : null,
         onAction: state.query.isEmpty ? () => context.push('/suggest') : null,

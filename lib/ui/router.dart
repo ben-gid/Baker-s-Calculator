@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/spacing.dart';
 import 'calculator/calculator_page.dart';
+import 'home/home_page.dart';
 import 'library/library_page.dart';
 import 'recipe/import_page.dart';
 import 'recipe/recipe_page.dart';
@@ -12,8 +13,12 @@ import 'timeline/timeline_page.dart';
 import 'tools/tools_page.dart';
 import 'wizard/wizard_page.dart';
 
-/// Three tabs, each with its own navigation stack, plus two full-screen routes
+/// Three tabs, each with its own navigation stack, plus full-screen routes
 /// pushed over the top.
+///
+/// The calculator lives inside the Home tab rather than being a tab of its
+/// own: Home is where a dough starts, and backing out of the calculator lands
+/// there.
 ///
 /// `/recipe/:id` and `/import` sit outside the shell so a shared link opens
 /// straight onto the content instead of behind a tab bar.
@@ -28,7 +33,13 @@ GoRouter buildRouter() => GoRouter(
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const CalculatorPage(),
+              builder: (context, state) => const HomePage(),
+              routes: [
+                GoRoute(
+                  path: 'calculate',
+                  builder: (context, state) => const CalculatorPage(),
+                ),
+              ],
             ),
           ],
         ),
@@ -82,7 +93,7 @@ GoRouter buildRouter() => GoRouter(
             const SizedBox(height: Insets.lg),
             FilledButton(
               onPressed: () => context.go('/'),
-              child: const Text('Go to the calculator'),
+              child: const Text('Go home'),
             ),
           ],
         ),

@@ -226,6 +226,25 @@ void main() {
       );
     });
 
+    test('yeast left over from classic does not shrink another style', () {
+      // Classic's yeast is kept when the baker switches style, so flipping
+      // back loses nothing. Sourdough and preferment have no yeast row, so it
+      // must not reach their denominator either: 1100 g at 70/2/20 with a
+      // stray 2% yeast came out as 1089 g.
+      for (final base in [_sourdough, _preferment]) {
+        final input = base.copyWith(totalDoughWeight: 1100, yeast: 2);
+        expect(calculate(input).totalWeight, closeTo(1100, 1e-9));
+      }
+    });
+
+    test('classic yeast still counts when it solves from dough weight', () {
+      final input = _classic.copyWith(
+        byFlourWeight: false,
+        totalDoughWeight: 1100,
+      );
+      expect(calculate(input).totalWeight, closeTo(1100, 1e-9));
+    });
+
     test('missing required fields throw instead of crashing on null', () {
       expect(
         () => calculate(const RecipeInput(style: DoughStyle.classic)),
@@ -311,6 +330,56 @@ void main() {
       expect(pre.ingredients[2].grams, closeTo(prefermentFlour * 0.002, 1e-9));
       expect(recipe.totalWeight, closeTo(900, 1e-9));
     });
+  });
+
+  group('the table reads the same grams as the groups', () {
+    // The calculator's table shows `gramsAt(typed percent)` beside each box
+    // rather than looking rows up by name. That only holds if it lands on the
+    // very numbers the groups carry, for every style and at any batch size.
+    for (final entry in {
+      'classic': _classic,
+      'sourdough': _sourdough,
+      'preferment': _preferment,
+    }.entries) {
+      test('${entry.key}: doughFlour and gramsAt agree with the rows', () {
+        final input = entry.value.copyWith(
+          loaves: 3,
+          enrichment: const Enrichment(fatPercent: 8, eggCount: 2),
+          mixIns: const [MixIn(name: 'Seeds', percent: 12)],
+        );
+        final recipe = calculate(input);
+        final dough = recipe.groups.firstWhere((g) => g.name == 'Dough');
+        double row(String name) =>
+            dough.ingredients.firstWhere((i) => i.name == name).grams;
+
+        expect(recipe.doughFlour, closeTo(row('Flour'), 1e-9));
+        expect(recipe.gramsAt(input.hydration!), closeTo(row('Water'), 1e-9));
+        expect(recipe.gramsAt(input.salt!), closeTo(row('Salt'), 1e-9));
+        expect(recipe.gramsAt(8), closeTo(row('Fat'), 1e-9));
+        expect(recipe.gramsAt(12), closeTo(row('Seeds'), 1e-9));
+        expect(recipe.eggs!.grams, closeTo(row('Eggs'), 1e-9));
+        expect(recipe.eggs!.count, 6);
+
+        final leaven = recipe.leaven;
+        switch (input.style) {
+          case DoughStyle.classic:
+            expect(leaven, isNull);
+            expect(recipe.gramsAt(input.yeast!), closeTo(row('Yeast'), 1e-9));
+          case DoughStyle.sourdough:
+            expect(leaven!.name, 'Levain');
+            expect(
+              recipe.gramsAt(input.levainPercent!),
+              closeTo(leaven.grams, 1e-9),
+            );
+          case DoughStyle.preferment:
+            expect(leaven!.name, 'Preferment');
+            expect(
+              recipe.gramsAt(input.prefermentPercent!),
+              closeTo(leaven.grams, 1e-9),
+            );
+        }
+      });
+    }
   });
 
   group('either weight can drive the calculation', () {

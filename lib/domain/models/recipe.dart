@@ -56,9 +56,33 @@ class Recipe {
     required this.totalWater,
     required this.hydration,
     required this.loaves,
+    required this.doughFlour,
   });
 
   final List<IngredientGroup> groups;
+
+  /// The flour weighed into the bowl, for all [loaves] — the 100% every typed
+  /// percentage is a share of.
+  final double doughFlour;
+
+  /// What an ingredient typed as [percent] of the dough flour weighs. The
+  /// calculator builds every percentage row this way, so a table reading its
+  /// grams through here always agrees with [groups].
+  double gramsAt(double percent) => doughFlour * percent / 100;
+
+  /// The levain or preferment, built ahead of the dough. Null for a straight
+  /// dough, which has only the one group.
+  IngredientGroup? get leaven => groups.length > 1 ? groups.first : null;
+
+  /// The eggs row, if there is one. The only ingredient that is counted.
+  Ingredient? get eggs {
+    for (final group in groups) {
+      for (final ingredient in group.ingredients) {
+        if (ingredient.count != null) return ingredient;
+      }
+    }
+    return null;
+  }
 
   /// Weight of everything, for all [loaves].
   final double totalWeight;
@@ -79,5 +103,6 @@ class Recipe {
     totalWater: totalWater * factor,
     hydration: hydration,
     loaves: loaves,
+    doughFlour: doughFlour * factor,
   );
 }

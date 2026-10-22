@@ -7,12 +7,11 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/spacing.dart';
 import '../../data/recipe_share.dart';
-import '../../domain/calculator.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/recipe_view.dart';
+import '../widgets/recipe_table.dart';
 import '../widgets/action_bar.dart';
 import '../widgets/panel.dart';
 
@@ -58,7 +57,7 @@ class RecipePage extends ConsumerWidget {
             tooltip: 'Open in calculator',
             onPressed: () {
               ref.read(calculatorProvider.notifier).load(recipe.input);
-              context.go('/');
+              context.go('/calculate');
             },
           ),
           IconButton(
@@ -100,8 +99,8 @@ class RecipePage extends ConsumerWidget {
                       'Open it in the calculator to fill in the missing values.',
                 )
               else
-                RecipeView(
-                  recipe: calculate(recipe.input),
+                RecipeSummary(
+                  input: recipe.input,
                   unit: settings.unit,
                   showBakersPercent: settings.showBakersPercent,
                 ),

@@ -11,6 +11,7 @@ import '../data/recipe_repository.dart';
 import '../data/settings_repository.dart';
 import '../data/system_recipes.dart';
 import '../domain/calculator.dart';
+import '../domain/models/active_bake.dart';
 import '../domain/models/dough_style.dart';
 import '../domain/models/recipe.dart';
 import '../domain/models/recipe_input.dart';
@@ -70,15 +71,16 @@ final settingsProvider = NotifierProvider<SettingsController, Settings>(
 // The recipe being edited
 // ---------------------------------------------------------------------------
 
-/// A real loaf, not a wall of empty fields. Whichever style the baker picks
-/// first already shows workable numbers.
+/// A blank dough. Nothing is filled in for the baker: every box starts empty
+/// with a typical range as its hint, and a template is one tap away for anyone
+/// who wants numbers to start from.
+///
+/// Hydration and salt are nulled explicitly because [RecipeInput]'s own
+/// constructor defaults them for JSON written before they were optional.
 const startingPoint = RecipeInput(
-  style: DoughStyle.sourdough,
-  totalDoughWeight: 900,
-  hydration: 75,
-  salt: 2,
-  levainPercent: 20,
-  levainHydration: 100,
+  style: DoughStyle.classic,
+  hydration: null,
+  salt: null,
 );
 
 class CalculatorController extends Notifier<RecipeInput> {
@@ -90,44 +92,14 @@ class CalculatorController extends Notifier<RecipeInput> {
   void change(RecipeInput Function(RecipeInput) edit) => state = edit(state);
 
   /// Switching style keeps everything already typed — fields belonging to
-  /// another style are simply not read — and fills in defaults for whatever the
-  /// new style needs but does not yet have.
-  void setStyle(DoughStyle style) {
-    state = switch (style) {
-      DoughStyle.classic => state.copyWith(
-        style: style,
-        flourWeight: state.flourWeight ?? 500,
-        yeast: state.yeast ?? 1,
-      ),
-      DoughStyle.sourdough => state.copyWith(
-        style: style,
-        totalDoughWeight: state.totalDoughWeight ?? 900,
-        levainPercent: state.levainPercent ?? 20,
-        levainHydration: state.levainHydration ?? 100,
-      ),
-      DoughStyle.preferment => state.copyWith(
-        style: style,
-        totalDoughWeight: state.totalDoughWeight ?? 900,
-        prefermentPercent: state.prefermentPercent ?? 30,
-        prefermentHydration: state.prefermentHydration ?? 100,
-        prefermentYeast: state.prefermentYeast ?? 0.2,
-      ),
-    };
-  }
+  /// another style are simply not read, so flipping back and forth loses
+  /// nothing. Whatever the new style needs and does not have stays empty.
+  void setStyle(DoughStyle style) => state = state.copyWith(style: style);
 
-  /// Flips which weight drives the recipe, independent of style. Mirrors
-  /// [setStyle]: fills in a default for the field the new mode needs if the
-  /// baker has never typed one, and leaves the other field exactly as typed
-  /// so flipping back and forth loses nothing.
-  void setByFlourWeight(bool value) => state = value
-      ? state.copyWith(
-          byFlourWeight: value,
-          flourWeight: state.flourWeight ?? 500,
-        )
-      : state.copyWith(
-          byFlourWeight: value,
-          totalDoughWeight: state.totalDoughWeight ?? 900,
-        );
+  /// Flips which weight drives the recipe, independent of style. Like
+  /// [setStyle], it leaves both weights exactly as typed.
+  void setByFlourWeight(bool value) =>
+      state = state.copyWith(byFlourWeight: value);
 
   void reset() => state = startingPoint;
 }
@@ -146,6 +118,32 @@ final calculationProvider = Provider<Recipe?>((ref) {
 
 final issuesProvider = Provider<List<InputIssue>>(
   (ref) => validate(ref.watch(calculatorProvider)),
+);
+
+// ---------------------------------------------------------------------------
+// The bake in progress
+// ---------------------------------------------------------------------------
+
+/// Set by "Start bake" and read by Home. Starting a new bake replaces the old
+/// one, the same way the reminders do.
+class ActiveBakeController extends Notifier<ActiveBake?> {
+  @override
+  ActiveBake? build() => ref.read(settingsRepositoryProvider).readActiveBake();
+
+  void start(ActiveBake bake) {
+    state = bake;
+    ref.read(settingsRepositoryProvider).writeActiveBake(bake);
+  }
+
+  Future<void> stop() async {
+    state = null;
+    await ref.read(settingsRepositoryProvider).writeActiveBake(null);
+    await ref.read(notificationServiceProvider).cancelBake();
+  }
+}
+
+final activeBakeProvider = NotifierProvider<ActiveBakeController, ActiveBake?>(
+  ActiveBakeController.new,
 );
 
 // ---------------------------------------------------------------------------

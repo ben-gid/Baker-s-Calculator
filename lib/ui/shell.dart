@@ -7,11 +7,7 @@ import 'widgets/app_nav_bar.dart';
 /// The three tabs. Kept in one list so the bottom bar and the wide-screen rail
 /// can never drift apart.
 const navTabs = [
-  NavTab(
-    label: 'Calculate',
-    icon: Icons.calculate_outlined,
-    selectedIcon: Icons.calculate,
-  ),
+  NavTab(label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home),
   NavTab(
     label: 'Recipes',
     icon: Icons.menu_book_outlined,

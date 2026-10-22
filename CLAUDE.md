@@ -63,7 +63,10 @@ is a preferment, and a blend splits exactly that 100%.
   the two numbers differing is correct, not a rounding bug.
 
 Do not put math in `state/` or `ui/`. If a screen needs a number, add a pure
-function to `domain/` and test it there.
+function to `domain/` and test it there. The calculator's table is the example:
+it shows `recipe.gramsAt(typedPercent)` beside each box, and
+`Recipe.doughFlour`, `leaven` and `eggs` exist so it never matches rows by name;
+the `table reads the same grams as the groups` test holds that to the groups.
 
 ### The regression baseline is load-bearing
 
@@ -92,6 +95,13 @@ advisory and **must never block anything**. `calculationProvider` returns null
 only on errors.
 
 Every numeric input is nullable and an empty box means **null, not zero**.
+A new dough starts that way: `startingPoint` is blank (it nulls `hydration`
+and `salt` explicitly, because `RecipeInput`'s constructor defaults them for old
+JSON), and `setStyle` / `setByFlourWeight` never fill anything in. Numbers come
+only from the baker or from the Template menu. An empty box is reported as
+`InputIssue.missing`, which the calculator gathers into one "Needs …" line, and
+`NumberField` deliberately does not outline it red — a blank dough would
+otherwise be a page of errors.
 `NumberField` only rewrites its controller when state disagrees with what is
 typed, so coercing a blank to a number in `onChanged` types that number straight
 back in and the field can never be cleared — you would have to backspace 900
@@ -116,15 +126,20 @@ the 375x812 test phone — use the `tapVisible` helper rather than bare `tap`,
 which only warns when it misses. `ensureVisible` cannot reach an item a lazy
 `ListView` has not built yet; `scrollUntilVisible` can.
 
-`test/app_test.dart` defines four finders, and new tests should use them rather
-than reaching for widget types:
+`test/app_test.dart` defines these helpers, and new tests should use them
+rather than reaching for widget types:
 
-- `fieldNamed('Hydration')` — the `TextField` inside a `NumberField`/`NameField`.
-  The label is a *sibling* of the box now, not inside its decoration, so
-  `find.widgetWithText(TextField, …)` does not reach it.
-- `actionBar('Save')` — the pinned primary action.
+- `fieldNamed('Hydration')` — the `TextField` inside a `NumberField`/`NameField`,
+  matched on its `label`. Table cells hide the printed label (`showLabel:
+  false`) but keep it, so the finder still works; the Water row's box is
+  labelled `Hydration`, a blend's boxes `Flour 1` and `Flour 1 share`.
+- `actionBar('Plan this bake')` — the pinned primary action. The calculator's
+  Save is an app-bar icon instead: `find.byTooltip('Save')`.
 - `sheetButton('Save')` — a button inside the modal sheet. Scoped, because the
   sheet's confirm button and the `ActionBar` behind it carry the same word.
+- `openNewDough(tester)` and `fillClassic(tester)` — the app boots onto Home and
+  the calculator starts blank, so a test that needs a recipe types one: 500 g
+  flour at 70/2/1, an 865 g classic loaf.
 - `openRecipesTab(tester)`.
 
 `NumberField` keeps a real `TextField` inside it rather than rebuilding on
@@ -218,7 +233,8 @@ only the handful of widgets that *read* as Material, and each lives in
 
 | Widget | Replaced |
 |---|---|
-| `Panel` / `DisclosurePanel` | `Card`, `ExpansionTile` |
+| `Panel` | `Card` |
+| `RecipeTable` / `RecipeSummary` | the form *and* the result — one table, editable in the calculator, read-only everywhere else |
 | `StyleToggle` | `SegmentedButton` (a sliding thumb instead of a checkmark) |
 | `AppNavBar` | `NavigationBar` / `NavigationRail` (the pill indicator) |
 | `ActionBar` | `FloatingActionButton.extended` |
@@ -235,9 +251,21 @@ already here.
 
 ### Navigation
 
-`go_router` with a three-branch `StatefulShellRoute` (Calculate / Recipes /
-Tools). `/recipe/:id`, `/recipe/:id/plan`, `/import`, `/suggest` and `/settings`
-sit outside the shell so a shared link opens straight onto content.
+`go_router` with a three-branch `StatefulShellRoute` (Home / Recipes / Tools).
+The calculator is `/calculate`, a child of Home rather than a tab: Home's "New
+dough" clears the dough and opens it, and backing out lands on Home.
+`/recipe/:id`, `/recipe/:id/plan`, `/import`, `/suggest` and `/settings` sit
+outside the shell so a shared link opens straight onto content.
+
+The calculator is laid out to fit a 375x812 phone without scrolling for a plain
+recipe — that was the point of the table. Rows are a 44 dp box on a 48 dp
+pitch; adding height to a row, or a panel above the table, pushes the totals
+under the nav bar. A blended, enriched recipe is allowed to scroll a little.
+
+"Start bake" saves an `ActiveBake` (the schedule exactly as started, edited
+durations included) to `SharedPreferences` through `SettingsRepository`, and
+Home's bake card reads it. It is recorded even when notification permission is
+refused, and "Stop bake" clears it and cancels the reminders.
 `bakerscalc://import?d=<base64url>` is registered in the Android manifest and
 iOS `Info.plist`.
 
