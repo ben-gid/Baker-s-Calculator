@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/formatting.dart';
 import '../../core/theme/app_theme.dart';
@@ -10,21 +11,23 @@ import '../../domain/models/recipe.dart';
 import '../../domain/models/recipe_input.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
+import '../widgets/action_bar.dart';
 import '../widgets/motion.dart';
 import '../widgets/number_field.dart';
-import '../widgets/recipe_table.dart';
 import '../widgets/starter_jar.dart';
 import '../widgets/style_toggle.dart';
-import 'save_recipe_sheet.dart';
+import 'dough_form.dart';
 
 /// The dough being built. It rises over Home as a sheet while Home's jar flies
 /// into the header, where it keeps filling to the dough's hydration as you
-/// type; the totals sit beside it and roll as they change.
+/// type; the total sits beside it and rolls as it changes.
 ///
-/// It starts blank. Every box shows a typical range in grey instead of a
-/// number nobody chose, and the Template menu loads a built-in or saved recipe
-/// for anyone who wants a starting point. Only the rows the style needs show;
-/// fat, sugar, eggs, blends and mix-ins wait behind "Add ingredient".
+/// One form, top to bottom: the style, the weight one loaf starts from, then
+/// the percentages. "See recipe" opens the result over it — the jar flies on
+/// into its bigger header there — and the loaf count lives on that page. It
+/// starts blank: every box shows a typical range in grey instead of a number
+/// nobody chose, and the Template menu fills the form from a built-in or saved
+/// recipe.
 class CalculatorPage extends ConsumerStatefulWidget {
   const CalculatorPage({super.key});
 
@@ -33,14 +36,15 @@ class CalculatorPage extends ConsumerStatefulWidget {
 }
 
 class _CalculatorPageState extends ConsumerState<CalculatorPage> {
-  /// Bumped whenever a template replaces the whole dough, so the table starts
-  /// over too — otherwise an empty Fat row the baker had opened would linger
+  /// Bumped whenever a template replaces the whole dough, so the form starts
+  /// over too — otherwise an empty Fat box the baker had opened would linger
   /// into a recipe that has no fat.
   int _generation = 0;
 
+  /// No toast and no Undo: a template is two deliberate taps away, it fills
+  /// the form in front of the baker, and Blank is always there to start over.
   void _useTemplate(String id) {
     final controller = ref.read(calculatorProvider.notifier);
-    final previous = ref.read(calculatorProvider);
     final template = id == _TemplateMenu.blank
         ? null
         : ref.read(libraryProvider.notifier).byId(id);
@@ -51,25 +55,6 @@ class _CalculatorPageState extends ConsumerState<CalculatorPage> {
       controller.load(template.input);
     }
     setState(() => _generation++);
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            template == null
-                ? 'Cleared the dough'
-                : 'Loaded "${template.name}"',
-          ),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              controller.load(previous);
-              if (mounted) setState(() => _generation++);
-            },
-          ),
-        ),
-      );
   }
 
   @override
@@ -86,20 +71,26 @@ class _CalculatorPageState extends ConsumerState<CalculatorPage> {
       issues: issues,
       unit: settings.unit,
     );
-    final controls = _Controls(
-      key: ValueKey(_generation),
-      input: input,
-      issues: issues,
+    final sheet = _Sheet(
+      child: _Scroll(
+        children: [
+          RiseIn(
+            delay: const Duration(milliseconds: 140),
+            child: _Basics(input: input, unit: settings.unit),
+          ),
+          const SizedBox(height: Insets.md),
+          RiseIn(
+            delay: const Duration(milliseconds: 200),
+            child: DoughForm(
+              key: ValueKey(_generation),
+              input: input,
+              issues: issues,
+              onChanged: controller.load,
+            ),
+          ),
+        ],
+      ),
     );
-    final table = RecipeTable(
-      key: ValueKey(_generation),
-      input: input,
-      recipe: recipe,
-      unit: settings.unit,
-      issues: issues,
-      onChanged: controller.load,
-    );
-    final warnings = _Warnings(issues: issues);
 
     // It came up as a sheet, so it goes back down: the back button points that
     // way. Still a BackButton underneath, for the platform and for tests.
@@ -113,38 +104,26 @@ class _CalculatorPageState extends ConsumerState<CalculatorPage> {
           title: const Text('New dough'),
           actions: [
             _TemplateMenu(onSelected: _useTemplate),
-            IconButton(
-              icon: const Icon(Icons.bookmark_add_outlined),
-              tooltip: 'Save',
-              onPressed: recipe == null
-                  ? null
-                  : () => showSaveRecipeSheet(context, ref, input),
-            ),
             const SizedBox(width: Insets.xs),
           ],
+        ),
+        bottomNavigationBar: ActionBar(
+          label: 'See recipe',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: recipe == null
+              ? null
+              : () => context.go('/calculate/recipe'),
         ),
         body: SafeArea(
           bottom: false,
           child: MediaQuery.sizeOf(context).width >= Breakpoints.tablet
-              // Wide screens put the jar and the batch beside the table, so
-              // nothing is ever below anything else.
+              // Wide screens keep the jar beside the form, so it never
+              // scrolls away.
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _Scroll(
-                        children: [
-                          header,
-                          const SizedBox(height: Insets.xl),
-                          controls,
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: _Sheet(
-                        child: _Scroll(children: [table, warnings]),
-                      ),
-                    ),
+                    Expanded(child: _Scroll(children: [header])),
+                    Expanded(child: sheet),
                   ],
                 )
               : Column(
@@ -159,24 +138,7 @@ class _CalculatorPageState extends ConsumerState<CalculatorPage> {
                       ),
                       child: header,
                     ),
-                    Expanded(
-                      child: _Sheet(
-                        child: _Scroll(
-                          children: [
-                            RiseIn(
-                              delay: const Duration(milliseconds: 140),
-                              child: controls,
-                            ),
-                            const SizedBox(height: Insets.md),
-                            RiseIn(
-                              delay: const Duration(milliseconds: 200),
-                              child: table,
-                            ),
-                            warnings,
-                          ],
-                        ),
-                      ),
-                    ),
+                    Expanded(child: sheet),
                   ],
                 ),
         ),
@@ -325,34 +287,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Advice under the table. Never blocks, never takes the totals' place.
-class _Warnings extends StatelessWidget {
-  const _Warnings({required this.issues});
-
-  final List<InputIssue> issues;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final baking = theme.extension<BakingColors>()!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final warning in issues.where(
-          (i) => i.severity == IssueSeverity.warning,
-        ))
-          Padding(
-            padding: const EdgeInsets.only(top: Insets.sm, left: Insets.xs),
-            child: Text(
-              warning.message,
-              style: theme.textTheme.bodySmall?.copyWith(color: baking.warn),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 /// Blank, the built-in recipes, then the baker's own.
 class _TemplateMenu extends ConsumerWidget {
   const _TemplateMenu({required this.onSelected});
@@ -408,143 +342,32 @@ class _TemplateMenu extends ConsumerWidget {
   }
 }
 
-/// The style, then the batch: which weight drives it and how many loaves. The
-/// batch folds to one line once it has a weight — "500 g flour · 1 loaf" — and
-/// opens on a tap. A new dough starts with it open, since that is the first
-/// thing to type. Grams or ounces is a Settings choice, not something to flip
-/// mid-recipe.
-class _Controls extends ConsumerStatefulWidget {
-  const _Controls({super.key, required this.input, required this.issues});
+/// The top of the form: the style, then the weight one loaf starts from, in
+/// the column of boxes, with flour or finished dough switched beside it. The weight is
+/// typed in the unit Settings chose and kept in grams, which is all the engine
+/// knows.
+class _Basics extends ConsumerWidget {
+  const _Basics({required this.input, required this.unit});
 
   final RecipeInput input;
-  final List<InputIssue> issues;
+  final MassUnit unit;
 
   @override
-  ConsumerState<_Controls> createState() => _ControlsState();
-}
-
-class _ControlsState extends ConsumerState<_Controls> {
-  late bool _open = _weight == null;
-
-  double? get _weight => widget.input.solvesForward
-      ? widget.input.flourWeight
-      : widget.input.totalDoughWeight;
-
-  void _setLoaves(int loaves) {
-    HapticFeedback.selectionClick();
-    ref
-        .read(calculatorProvider.notifier)
-        .change((i) => i.copyWith(loaves: loaves));
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final controller = ref.read(calculatorProvider.notifier);
-    final input = widget.input;
-    final issues = widget.issues;
     final forward = input.solvesForward;
-    final weight = _weight;
-    final loaves = '${input.loaves} ${input.loaves == 1 ? 'loaf' : 'loaves'}';
-    final still = MediaQuery.disableAnimationsOf(context);
-    final Widget batch = !_open
-        ? const SizedBox(width: double.infinity)
-        : Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Insets.md,
-              0,
-              Insets.md,
-              Insets.md,
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 148,
-                      child: StyleToggle<bool>(
-                        compact: true,
-                        options: const [
-                          ToggleOption(value: true, label: 'Flour'),
-                          ToggleOption(value: false, label: 'Dough'),
-                        ],
-                        selected: forward,
-                        onChanged: controller.setByFlourWeight,
-                      ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      // One box for whichever weight is driving, so
-                      // the row never holds a number the recipe is
-                      // not reading.
-                      child: forward
-                          ? NumberField(
-                              label: 'Flour weight',
-                              showLabel: false,
-                              dense: true,
-                              hint: '400–600',
-                              suffix: 'g',
-                              value: input.flourWeight,
-                              issue: issues.firstFor(RecipeField.flourWeight),
-                              onChanged: (v) => controller.change(
-                                (i) => i.copyWith(flourWeight: v),
-                              ),
-                            )
-                          : NumberField(
-                              label: 'Dough weight',
-                              showLabel: false,
-                              dense: true,
-                              hint: '700–1000',
-                              suffix: 'g',
-                              value: input.totalDoughWeight,
-                              issue: issues.firstFor(
-                                RecipeField.totalDoughWeight,
-                              ),
-                              onChanged: (v) => controller.change(
-                                (i) => i.copyWith(totalDoughWeight: v),
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Insets.sm),
-                Row(
-                  children: [
-                    // Expanded rather than Spacer: at narrow widths
-                    // the label has to give way to the stepper.
-                    Expanded(
-                      child: Text('Loaves', style: theme.textTheme.bodyMedium),
-                    ),
-                    IconButton.outlined(
-                      icon: const Icon(Icons.remove),
-                      tooltip: 'One fewer loaf',
-                      onPressed: input.loaves <= 1
-                          ? null
-                          : () => _setLoaves(input.loaves - 1),
-                    ),
-                    SizedBox(
-                      width: 40,
-                      child: RollingText(
-                        '${input.loaves}',
-                        textAlign: TextAlign.center,
-                        style: numeric(theme.textTheme.titleLarge),
-                      ),
-                    ),
-                    IconButton.outlined(
-                      icon: const Icon(Icons.add),
-                      tooltip: 'One more loaf',
-                      onPressed: () => _setLoaves(input.loaves + 1),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-    final summary = weight == null
-        ? 'Set the batch'
-        : '${formatMass(weight, ref.watch(settingsProvider).unit)} '
-              '${forward ? 'flour' : 'dough'} · $loaves';
+    final weight = forward ? input.flourWeight : input.totalDoughWeight;
+    final ounces = unit == MassUnit.ounces;
+
+    void setWeight(double? typed) {
+      final grams = typed == null ? null : toGrams(typed, unit);
+      controller.change(
+        (i) => forward
+            ? i.copyWith(flourWeight: grams)
+            : i.copyWith(totalDoughWeight: grams),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -560,61 +383,54 @@ class _ControlsState extends ConsumerState<_Controls> {
             controller.setStyle(style);
           },
         ),
-        const SizedBox(height: Insets.md),
-        // The page tone, so the weight box's own fill still reads inside it.
-        Material(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(Radii.field),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              InkWell(
-                key: const Key('batch'),
-                onTap: () => setState(() => _open = !_open),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Insets.lg,
-                    vertical: Insets.md,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.scale_outlined,
-                        size: 20,
-                        color: colors.primary,
-                      ),
-                      const SizedBox(width: Insets.md),
-                      Expanded(
-                        child: Text(
-                          summary,
-                          style: numeric(theme.textTheme.titleSmall),
-                        ),
-                      ),
-                      AnimatedRotation(
-                        turns: _open ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 220),
-                        child: Icon(
-                          Icons.expand_more_rounded,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        const SizedBox(height: Insets.sm),
+        // The weight in the column of boxes, and what it weighs — flour or
+        // the finished dough — switched where the other rows have a name.
+        Row(
+          children: [
+            SizedBox(
+              width: fieldBoxWidth,
+              // One box for whichever weight is driving, so the form never
+              // holds a number the recipe is not reading.
+              child: NumberField(
+                key: ValueKey(forward),
+                label: forward ? 'Flour weight' : 'Dough weight',
+                showLabel: false,
+                dense: true,
+                hint: switch ((forward, ounces)) {
+                  (true, false) => '400–600',
+                  (true, true) => '14–21',
+                  (false, false) => '700–1000',
+                  (false, true) => '25–35',
+                },
+                suffix: unit.symbol,
+                value: weight == null ? null : fromGrams(weight, unit),
+                onChanged: setWeight,
               ),
-              // Zero-length AnimatedSize trips over itself, so reduced motion
-              // simply swaps the panel in.
-              if (still)
-                batch
-              else
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: batch,
-                ),
-            ],
+            ),
+            const SizedBox(width: Insets.md),
+            SizedBox(
+              width: 148,
+              child: StyleToggle<bool>(
+                compact: true,
+                options: const [
+                  ToggleOption(value: true, label: 'Flour'),
+                  ToggleOption(value: false, label: 'Dough'),
+                ],
+                selected: forward,
+                onChanged: controller.setByFlourWeight,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Insets.xs),
+        Padding(
+          padding: const EdgeInsets.only(left: Insets.xs),
+          child: Text(
+            'For one loaf. How many is on the recipe.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],

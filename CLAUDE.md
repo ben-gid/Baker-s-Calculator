@@ -63,8 +63,8 @@ is a preferment, and a blend splits exactly that 100%.
   the two numbers differing is correct, not a rounding bug.
 
 Do not put math in `state/` or `ui/`. If a screen needs a number, add a pure
-function to `domain/` and test it there. The calculator's table is the example:
-it shows `recipe.gramsAt(typedPercent)` beside each box, and
+function to `domain/` and test it there. The recipe table is the example: it
+shows `recipe.gramsAt(percent)` beside each percentage, and
 `Recipe.doughFlour`, `leaven` and `eggs` exist so it never matches rows by name;
 the `table reads the same grams as the groups` test holds that to the groups.
 
@@ -130,23 +130,25 @@ which only warns when it misses. `ensureVisible` cannot reach an item a lazy
 rather than reaching for widget types:
 
 - `fieldNamed('Hydration')` — the `TextField` inside a `NumberField`/`NameField`,
-  matched on its `label`. Table cells hide the printed label (`showLabel:
-  false`) but keep it, so the finder still works; the Water row's box is
-  labelled `Hydration`, a blend's boxes `Flour 1` and `Flour 1 share`.
-- `actionBar('Plan this bake')` — the pinned primary action. The calculator's
-  Save is an app-bar icon instead: `find.byTooltip('Save')`.
+  matched on its `label`. The calculator's boxes hide the printed label
+  (`showLabel: false`, the name sits beside the box instead) but keep it, so
+  the finder still works: `Flour weight`, `Hydration`, `Flour 1` and
+  `Flour 1 share`, `Mix-in 1` and `Mix-in 1 share`.
+- `actionBar('Plan this bake')` — the pinned primary action: `See recipe` on
+  the calculator, `Save` on its recipe. A secondary button beside it (the
+  recipe's `Back`) is reached with `find.text('Back')`.
 - `sheetButton('Save')` — a button inside the modal sheet. Scoped, because the
   sheet's confirm button and the `ActionBar` behind it carry the same word.
 - `openNewDough(tester)` and `fillClassic(tester)` — the app boots onto Home and
   the calculator starts blank, so a test that needs a recipe types one: 500 g
-  flour at 70/2/1, an 865 g classic loaf.
+  flour at 70/2/1, an 865 g classic loaf. It stays on the form.
 - `openRecipesTab(tester)` — the full library, behind the shelf's "See all" on
   Home. There are no tabs, so from anywhere else back out to Home first.
 
 **Widget tests run with reduced motion.** The jar is alive for as long as it is
 on screen, so `pumpAndSettle` would never settle; `usePhoneScreen` (and the
 wide-screen test) call `reduceMotion(tester)`, which the jar, `RiseIn`,
-`RollingText` and the batch line all honour. The one test that leaves motion on
+`RollingText` and the loaf stepper all honour. The one test that leaves motion on
 pumps frames by time instead. A new test that pumps the app itself must call
 `reduceMotion` too.
 
@@ -173,9 +175,9 @@ sage in dark, for action and selection; a honey-yellow starter for the answer.
 It is still filled and tonal: no rules, no shadows and no `surfaceTint`.
 Containers are told apart by their **fill**, not by a border — the page is a
 tinted ground, a panel is the lighter surface on it, and a field is a darker
-fill inside the panel. The calculator's recipe sits on a white sheet, so its
-table panel is the sheet's own colour and only the fields show; the batch line
-uses the page tone so its weight box still reads inside it.
+fill inside the panel. The calculator's form sits on a white sheet, where a
+panel would be the sheet's own colour, so it uses bare `SectionLabel` headings
+and only the fields show.
 
 Radii come from [lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) —
 `card` 24, `field` 16, `chip` 16, and `pill` for anything that reads as a
@@ -230,7 +232,8 @@ What the jar means is decided by its screen, never inside it. Home: a bake under
 way rises with `ActiveBake.riseAt(now)` (fermenting time elapsed, domes when
 ready); otherwise the dough being built fills to its hydration; otherwise an
 empty jar. The calculator's header jar fills to the hydration as you type. Home's
-jar and the calculator's share `jarHeroTag`, so one flies into the other.
+jar, the calculator's and the bigger one heading its recipe share `jarHeroTag`,
+so the jar flies from Home into the form and on up into the recipe.
 
 Each saved recipe has its own jar, which travels with it: its shelf card on
 Home, its library row, its page's header and its plan's header all wrap the
@@ -261,7 +264,9 @@ only the handful of widgets that *read* as Material, and each lives in
 | Widget | Replaced |
 |---|---|
 | `Panel` | `Card` |
-| `RecipeTable` / `RecipeSummary` | the form *and* the result — one table, editable in the calculator, read-only everywhere else |
+| `RecipeTable` / `RecipeSummary` | the result — one read-only table wherever a recipe is shown |
+| `DoughForm` | the form — labelled boxes, under the calculator's style and weight |
+| `LoafStepper` | the loaf count, on the calculator's recipe, a saved recipe's page and the wizard |
 | `StyleToggle` | `SegmentedButton` (a sliding thumb instead of a checkmark) |
 | `ActionBar` | `FloatingActionButton.extended` |
 | `NumberField` / `NameField` | the floating-label `InputDecoration` |
@@ -282,7 +287,9 @@ New dough button and a horizontal recipe shelf whose "See all" opens the
 library (`/recipes`). The calculator (`/calculate`) and the library are children
 of `/`, so `context.go` to either keeps Home underneath, and backing out lands
 there. The calculator has its own transition: the page fades while its sheet
-rises on the route's animation and the jar flies into its header.
+rises on the route's animation and the jar flies into its header. Its recipe
+(`/calculate/recipe`) is a child of it, so Back is a pop onto the form as it
+was left; that route only fades, and the jar's flight is the movement.
 `/recipe/:id`, `/recipe/:id/plan`, `/import`, `/suggest` and `/settings` are
 top-level so a shared link opens straight onto content.
 
@@ -291,11 +298,29 @@ Import sit on the empty jar until the baker has saved a recipe, then at the end
 of the shelf — one place at a time. The dough-temperature card is at the foot
 of the bake plan.
 
-The calculator shows only the rows its style needs; fat, sugar, eggs, blends
-and mix-ins wait behind "Add ingredient". The batch (which weight drives it, and
-how many loaves) folds to one line — "500 g flour · 1 loaf" — once it has a
-weight, and opens on a tap; a new dough starts with it open. Tests reach it with
-`find.byKey(const Key('batch'))`.
+The calculator is one form: the style, then "By flour / By dough" and the
+weight on one line, then `DoughForm` — only the boxes the style needs, with fat,
+sugar, eggs, blends and mix-ins behind "Add ingredient". Every row is the box on
+the left, at one width so the numbers make a column, and its name on the right
+(for a blend or a mix-in, the name box), with tight spacing so a whole dough
+fits on a phone. The weight is for one loaf. The header's jar and rolling total are the live answer, so the form has no
+weights column. "See recipe" waits for a recipe and opens `DoughResultPage`: the
+jar in a bigger header beside the total, flour, water and true hydration (which
+is why that page has no `TotalsPanel`), the loaf stepper, the read-only table,
+and any warnings, with Back (secondary) and Save (primary) at the bottom.
+Everything opens on the form — a template, "Open in calculator", and Home's way
+back to the dough. A template replaces the dough without a toast or an Undo:
+it takes two deliberate taps, and Blank starts over. Boxes show warnings only:
+blanks are the header's "Needs …" line, and errors are printed there too.
+
+The weight box is typed in the unit Settings chose and converted at the field's
+edge with `fromGrams`/`toGrams` in `core/formatting.dart`; the engine and
+storage stay in grams. `fromGrams` rounds ounces to six places because
+`NumberField` compares its text with its value exactly.
+
+A recipe's page has its own loaf stepper, for one bake: it never saves back,
+and it carries into the share and into "Open in calculator", not into the plan,
+which shows no weights.
 
 "Start bake" saves an `ActiveBake` (the schedule exactly as started, edited
 durations included) to `SharedPreferences` through `SettingsRepository`, and

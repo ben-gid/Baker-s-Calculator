@@ -15,6 +15,8 @@ class ActionBar extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
   final String label;
@@ -23,6 +25,11 @@ class ActionBar extends StatelessWidget {
   /// Null disables the bar — it stays in place and greys out rather than
   /// disappearing, so the layout does not jump as a form becomes valid.
   final VoidCallback? onPressed;
+
+  /// A quieter tonal button before the primary one — "Back" beside "Save".
+  /// It takes the smaller share of the width, so the primary still leads.
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -43,32 +50,50 @@ class ActionBar extends StatelessWidget {
           ),
           child: SizedBox(
             height: 54,
-            child: FilledButton(
-              onPressed: onPressed,
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.primary,
-                foregroundColor: colors.onPrimary,
-                disabledBackgroundColor: colors.surfaceContainerHigh,
-                disabledForegroundColor: colors.onSurfaceVariant,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 20),
-                  const SizedBox(width: Insets.sm),
-                  Text(
-                    label,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: enabled
-                          ? colors.onPrimary
-                          : colors.onSurfaceVariant,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (secondaryLabel != null) ...[
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.tonal(
+                      onPressed: onSecondary,
+                      child: Text(secondaryLabel!),
                     ),
                   ),
+                  const SizedBox(width: Insets.sm),
                 ],
-              ),
+                Expanded(flex: 3, child: _primary(theme, enabled)),
+              ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _primary(ThemeData theme, bool enabled) {
+    final colors = theme.colorScheme;
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: colors.primary,
+        foregroundColor: colors.onPrimary,
+        disabledBackgroundColor: colors.surfaceContainerHigh,
+        disabledForegroundColor: colors.onSurfaceVariant,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: Insets.sm),
+          Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: enabled ? colors.onPrimary : colors.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

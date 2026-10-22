@@ -10,12 +10,14 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../data/recipe_share.dart';
 import '../../domain/calculator.dart';
+import '../../domain/models/recipe_input.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/recipe_table.dart';
 import '../widgets/action_bar.dart';
+import '../widgets/loaf_stepper.dart';
 import '../widgets/motion.dart';
 import '../widgets/panel.dart';
 import '../widgets/starter_jar.dart';
@@ -23,13 +25,27 @@ import '../widgets/starter_jar.dart';
 /// One recipe. Its jar has travelled here from the card that was tapped and sits
 /// in the header beside the name; the recipe itself reads below, and "Plan this
 /// bake" carries the jar on to the plan.
-class RecipePage extends ConsumerWidget {
+///
+/// The loaf count can be changed here for one bake without touching the saved
+/// recipe: the table, the share and "Open in calculator" all take the count on
+/// screen, and leaving the page forgets it.
+class RecipePage extends ConsumerStatefulWidget {
   const RecipePage({super.key, required this.id});
 
   final String id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RecipePage> createState() => _RecipePageState();
+}
+
+class _RecipePageState extends ConsumerState<RecipePage> {
+  /// Null until the baker changes it, so the saved count shows.
+  int? _loaves;
+
+  String get id => widget.id;
+
+  @override
+  Widget build(BuildContext context) {
     final library = ref.watch(libraryProvider);
     final settings = ref.watch(settingsProvider);
 
@@ -54,7 +70,8 @@ class RecipePage extends ConsumerWidget {
       );
     }
 
-    final blocked = validate(recipe.input).hasErrors;
+    final input = recipe.input.copyWith(loaves: _loaves ?? recipe.input.loaves);
+    final blocked = validate(input).hasErrors;
 
     return Scaffold(
       // The name is the header's, below — the bar only carries the actions.
@@ -64,14 +81,16 @@ class RecipePage extends ConsumerWidget {
             icon: const Icon(Icons.calculate_outlined),
             tooltip: 'Open in calculator',
             onPressed: () {
-              ref.read(calculatorProvider.notifier).load(recipe.input);
+              ref.read(calculatorProvider.notifier).load(input);
               context.go('/calculate');
             },
           ),
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: 'Share',
-            onPressed: blocked ? null : () => _share(context, recipe, ref),
+            onPressed: blocked
+                ? null
+                : () => _share(recipe.copyWith(input: input)),
           ),
           _Menu(recipe: recipe),
           const SizedBox(width: Insets.xs),
@@ -93,6 +112,7 @@ class RecipePage extends ConsumerWidget {
               RiseIn(
                 child: _Header(
                   recipe: recipe,
+                  input: input,
                   unit: settings.unit,
                   blocked: blocked,
                 ),
@@ -114,12 +134,22 @@ class RecipePage extends ConsumerWidget {
                   message:
                       'Open it in the calculator to fill in the missing values.',
                 )
-              else
+              else ...[
+                Panel(
+                  children: [
+                    LoafStepper(
+                      loaves: input.loaves,
+                      onChanged: (loaves) => setState(() => _loaves = loaves),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
                 RecipeSummary(
-                  input: recipe.input,
+                  input: input,
                   unit: settings.unit,
                   showBakersPercent: settings.showBakersPercent,
                 ),
+              ],
             ],
           ),
         ),
@@ -127,11 +157,7 @@ class RecipePage extends ConsumerWidget {
     );
   }
 
-  Future<void> _share(
-    BuildContext context,
-    SavedRecipe recipe,
-    WidgetRef ref,
-  ) async {
+  Future<void> _share(SavedRecipe recipe) async {
     final settings = ref.read(settingsProvider);
     final text = toPlainText(recipe, settings.unit);
     final link = toShareLink(recipe);
@@ -149,25 +175,27 @@ class RecipePage extends ConsumerWidget {
 class _Header extends StatelessWidget {
   const _Header({
     required this.recipe,
+    required this.input,
     required this.unit,
     required this.blocked,
   });
 
   final SavedRecipe recipe;
+  final RecipeInput input;
   final MassUnit unit;
   final bool blocked;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final result = blocked ? null : calculate(recipe.input);
+    final result = blocked ? null : calculate(input);
     final facts = [
-      recipe.input.style.label,
+      input.style.label,
       if (result != null) ...[
         '${formatPercent(result.hydration)} hydration',
         formatMass(result.totalWeight, unit),
       ],
-      if (recipe.input.loaves > 1) '${recipe.input.loaves} loaves',
+      if (input.loaves > 1) '${input.loaves} loaves',
     ].join(' · ');
 
     return Row(

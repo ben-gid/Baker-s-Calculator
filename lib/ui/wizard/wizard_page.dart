@@ -7,6 +7,7 @@ import '../../domain/models/dough_style.dart';
 import '../../domain/wizard.dart';
 import '../../state/providers.dart';
 import '../widgets/action_bar.dart';
+import '../widgets/loaf_stepper.dart';
 import '../widgets/panel.dart';
 import '../widgets/recipe_table.dart';
 import '../widgets/style_toggle.dart';
@@ -132,6 +133,17 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                         ),
                       ),
                   ],
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.md),
+            Panel(
+              title: 'How many?',
+              children: [
+                LoafStepper(
+                  loaves: _choices.loaves,
+                  onChanged: (loaves) =>
+                      _update(_choices.copyWith(loaves: loaves)),
                 ),
               ],
             ),

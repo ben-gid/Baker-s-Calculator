@@ -9,6 +9,7 @@
 library;
 
 import 'package:bakers_calculator/app.dart';
+import 'package:bakers_calculator/core/formatting.dart';
 import 'package:bakers_calculator/data/notification_service.dart';
 import 'package:bakers_calculator/data/recipe_repository.dart';
 import 'package:bakers_calculator/data/settings_repository.dart';
@@ -241,17 +242,18 @@ void main() {
       tester.widget<TextField>(fieldNamed('Flour weight')).controller!.text,
       isEmpty,
     );
-    expect(
-      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
-      isEmpty,
-    );
     expect(find.text('Total dough'), findsNothing);
     expect(
       find.text('Needs flour weight, yeast, hydration and salt'),
       findsOneWidget,
     );
-    // The weights column holds its place rather than vanishing.
-    expect(find.text('—'), findsNWidgets(4));
+    // Nothing to weigh yet, so no way on to the recipe.
+    expect(tester.widget<ActionBar>(actionBar('See recipe')).onPressed, isNull);
+
+    expect(
+      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      isEmpty,
+    );
   });
 
   testWidgets('filling in the blanks calculates without a button', (
@@ -261,10 +263,23 @@ void main() {
     await openNewDough(tester);
     await fillClassic(tester);
 
-    // 500 + 350 + 10 + 5, and each weight beside its percentage.
+    // 500 + 350 + 10 + 5, rolling in the header while the dough is typed.
     expect(find.text('865 g'), findsOneWidget);
-    expect(find.text('350 g'), findsWidgets);
     expect(find.text('Total dough'), findsOneWidget);
+
+    // And the recipe lays out each weight beside its percentage.
+    await tester.tap(actionBar('See recipe'));
+    await tester.pumpAndSettle();
+    expect(find.text('350 g'), findsWidgets);
+    expect(actionBar('Save'), findsOneWidget);
+
+    // Back is the form again, still filled in.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      '70',
+    );
   });
 
   testWidgets('an unusable value blocks the recipe and says why', (
@@ -279,6 +294,7 @@ void main() {
 
     expect(find.text('Total dough'), findsNothing);
     expect(find.textContaining('greater than zero'), findsOneWidget);
+    expect(tester.widget<ActionBar>(actionBar('See recipe')).onPressed, isNull);
   });
 
   testWidgets('a field can be emptied and retyped', (tester) async {
@@ -327,14 +343,15 @@ void main() {
     await tester.tap(find.text('Sourdough'));
     await tester.pumpAndSettle();
 
-    expect(fieldNamed('Yeast'), findsNothing);
-    expect(fieldNamed('Levain'), findsOneWidget);
     // Sourdough solves from the dough weight, and nothing is filled in for it.
     expect(fieldNamed('Dough weight'), findsOneWidget);
     expect(
       find.text('Needs dough weight, levain and levain hydration'),
       findsOneWidget,
     );
+
+    expect(fieldNamed('Yeast'), findsNothing);
+    expect(fieldNamed('Levain'), findsOneWidget);
     expect(
       tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
       '70',
@@ -349,6 +366,8 @@ void main() {
     await boot(tester);
     await openNewDough(tester);
     await fillClassic(tester);
+    await tester.tap(actionBar('See recipe'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('One more loaf'));
     await tester.pumpAndSettle();
@@ -357,7 +376,7 @@ void main() {
     expect(find.textContaining('Each'), findsOneWidget);
   });
 
-  testWidgets('a template fills the dough, and Undo takes it back', (
+  testWidgets('a template fills the form, and Blank empties it', (
     tester,
   ) async {
     await boot(tester);
@@ -368,11 +387,15 @@ void main() {
     await tester.tap(find.text('Country Sourdough').last);
     await tester.pumpAndSettle();
 
+    // Onto the form, filled in, with nothing popping up over it.
     expect(find.text('Total dough'), findsOneWidget);
     expect(find.text('900 g'), findsOneWidget);
     expect(find.text('Bread flour'), findsWidgets);
+    expect(find.byType(SnackBar), findsNothing);
 
-    await tester.tap(find.text('Undo'));
+    await tester.tap(find.text('Template'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Blank'));
     await tester.pumpAndSettle();
 
     expect(find.text('Total dough'), findsNothing);
@@ -433,7 +456,9 @@ void main() {
     await openNewDough(tester);
     await fillClassic(tester);
 
-    await tester.tap(find.byTooltip('Save'));
+    await tester.tap(actionBar('See recipe'));
+    await tester.pumpAndSettle();
+    await tester.tap(actionBar('Save'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -443,7 +468,9 @@ void main() {
     await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
 
-    // Back down to Home, then the whole library.
+    // Back to the form, down to Home, then the whole library.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
     await openRecipesTab(tester);
@@ -463,7 +490,9 @@ void main() {
     await boot(tester);
     await openNewDough(tester);
     await fillClassic(tester);
-    await tester.tap(find.byTooltip('Save'));
+    await tester.tap(actionBar('See recipe'));
+    await tester.pumpAndSettle();
+    await tester.tap(actionBar('Save'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('save-recipe-name')),
@@ -472,6 +501,8 @@ void main() {
     await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -480,7 +511,9 @@ void main() {
 
     await tester.tap(find.text('Back to your 865 g dough'));
     await tester.pumpAndSettle();
+    // Back onto the form, as it was left.
     expect(find.text('865 g'), findsOneWidget);
+    expect(actionBar('See recipe'), findsOneWidget);
   });
 
   testWidgets('saving before the library has loaded does not lose recipes', (
@@ -501,7 +534,9 @@ void main() {
     await boot(tester);
     await openNewDough(tester);
     await fillClassic(tester);
-    await tester.tap(find.byTooltip('Save'));
+    await tester.tap(actionBar('See recipe'));
+    await tester.pumpAndSettle();
+    await tester.tap(actionBar('Save'));
     await tester.pumpAndSettle();
     await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
@@ -540,13 +575,11 @@ void main() {
     await tester.tap(find.byTooltip('Open in calculator'));
     await tester.pumpAndSettle();
 
-    // A loaded recipe has its batch, so the batch line starts folded.
-    expect(find.text('900 g dough · 1 loaf'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('batch')));
-    await tester.pumpAndSettle();
-    expect(fieldNamed('Dough weight'), findsOneWidget);
-    // The built-in is a 90/10 blend, so the calculator should show both flours.
+    // Onto the form, filled in — a 90/10 blend, so both flours are there.
+    expect(find.text('900 g'), findsOneWidget);
     expect(find.text('Bread flour'), findsWidgets);
+    expect(fieldNamed('Dough weight'), findsOneWidget);
+    expect(fieldNamed('Flour 1 share'), findsOneWidget);
   });
 
   testWidgets('the plan works out the water temperature as inputs change', (
@@ -658,9 +691,7 @@ void main() {
     expect(repository.recipes.single.input.style, DoughStyle.classic);
   });
 
-  testWidgets('wide screens show the table and the totals side by side', (
-    tester,
-  ) async {
+  testWidgets('wide screens keep the jar beside the form', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -674,7 +705,73 @@ void main() {
     await tester.tap(find.text('Country Sourdough').last);
     await tester.pumpAndSettle();
 
-    // The jar and the totals beside the table, visible without scrolling.
-    expect(find.text('Total dough'), findsOneWidget);
+    // The jar beside the form, visible without scrolling.
+    expect(find.text('Total dough'), findsWidgets);
+    expect(find.text('Bread flour'), findsWidgets);
+  });
+
+  testWidgets('a recipe page scales for one bake without changing the recipe', (
+    tester,
+  ) async {
+    await boot(tester);
+    await openRecipesTab(tester);
+    await tester.tap(find.text('Country Sourdough'));
+    await tester.pumpAndSettle();
+
+    await tapVisible(tester, find.byTooltip('One more loaf'));
+    expect(find.text('1800 g'), findsWidgets);
+
+    // The calculator takes the count on screen, not the saved one.
+    await tester.tap(find.byTooltip('Open in calculator'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Each 900 g'), findsOneWidget);
+
+    // Back on the page, it is the saved recipe again.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await openRecipesTab(tester);
+    await tester.tap(find.text('Country Sourdough'));
+    await tester.pumpAndSettle();
+    expect(find.text('1800 g'), findsNothing);
+  });
+
+  testWidgets('the wizard saves the loaves it was asked for', (tester) async {
+    await boot(tester);
+    await tapVisible(tester, find.text('Suggest a recipe'));
+
+    await tester.scrollUntilVisible(find.byTooltip('One more loaf'), 200);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('One more loaf'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(actionBar('Save this recipe'));
+    await tester.pumpAndSettle();
+
+    expect(repository.recipes.single.input.loaves, 2);
+  });
+
+  testWidgets('in ounces, the weight is typed and shown in ounces', (
+    tester,
+  ) async {
+    await settings.write(const Settings(unit: MassUnit.ounces));
+    await boot(tester);
+    await openNewDough(tester);
+
+    expect(find.text('oz'), findsOneWidget);
+    await tester.enterText(fieldNamed('Flour weight'), '20');
+    await tester.enterText(fieldNamed('Hydration'), '70');
+    await tester.enterText(fieldNamed('Salt'), '2');
+    await tester.enterText(fieldNamed('Yeast'), '1');
+    await tester.pumpAndSettle();
+
+    // 20 oz of flour at 173% all told.
+    expect(find.text('34.60 oz'), findsOneWidget);
+
+    // Kept in grams underneath, the box still reads what was typed.
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(fieldNamed('Flour weight')).controller!.text,
+      '20',
+    );
   });
 }

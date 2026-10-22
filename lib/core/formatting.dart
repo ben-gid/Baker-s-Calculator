@@ -26,6 +26,20 @@ const double _gramsPerOunce = 28.349523125;
 String formatMass(double grams, MassUnit unit) =>
     '${_formatMassValue(grams, unit)} ${unit.symbol}';
 
+/// A weight in grams, as the baker types it in [unit].
+///
+/// Ounces are rounded to six places, which no kitchen scale reaches, to shed
+/// the floating-point noise of the round trip: `NumberField` compares what is
+/// typed with its value exactly, so 17.6 coming back as 17.600000000000001
+/// would retype the box under the caret.
+double fromGrams(double grams, MassUnit unit) => unit == MassUnit.ounces
+    ? double.parse((grams / _gramsPerOunce).toStringAsFixed(6))
+    : grams;
+
+/// A weight typed in [unit], in the grams the engine works in.
+double toGrams(double value, MassUnit unit) =>
+    unit == MassUnit.ounces ? value * _gramsPerOunce : value;
+
 String _formatMassValue(double grams, MassUnit unit) {
   if (unit == MassUnit.ounces) {
     return (grams / _gramsPerOunce).toStringAsFixed(2);

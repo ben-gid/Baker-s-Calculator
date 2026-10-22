@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/spacing.dart';
 import 'calculator/calculator_page.dart';
+import 'calculator/dough_result_page.dart';
 import 'home/home_page.dart';
 import 'library/library_page.dart';
 import 'recipe/import_page.dart';
@@ -46,6 +47,20 @@ GoRouter buildRouter() => GoRouter(
                 ),
             child: const CalculatorPage(),
           ),
+          routes: [
+            GoRoute(
+              path: 'recipe',
+              // Only a fade: the jar's flight up into the bigger header is
+              // the movement.
+              pageBuilder: (context, state) => CustomTransitionPage(
+                key: state.pageKey,
+                transitionDuration: const Duration(milliseconds: 420),
+                transitionsBuilder: (context, animation, _, child) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: const DoughResultPage(),
+              ),
+            ),
+          ],
         ),
         GoRoute(
           path: 'recipes',
