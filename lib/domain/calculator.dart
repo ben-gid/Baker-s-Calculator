@@ -1,16 +1,17 @@
 /// The baking engine. Pure Dart — no Flutter, no globals, no I/O.
 ///
 /// **The flour in the dough is 100%.** Every percentage the baker types —
-/// hydration, salt, levain, preferment, fat, sugar, mix-ins — is a share of the
-/// flour weighed into the mixing bowl, and a levain or preferment is just
+/// salt, levain, preferment, fat, sugar, mix-ins — is a share of the flour
+/// weighed into the mixing bowl, and a levain or preferment is just
 /// another ingredient measured against it. That is how a written recipe reads
 /// ("500 g flour, 375 g water, 100 g starter"), and it means the flour row says
 /// 100% whether or not there is a preferment.
 ///
-/// The flour and water a levain carries in are still counted in
-/// [Recipe.totalFlour], [Recipe.totalWater] and [Recipe.hydration], so the
-/// totals card shows the dough's true hydration, which sits a little above the
-/// figure typed in.
+/// Hydration is the one exception: it is the dough's **total** hydration, all
+/// the water over all the flour, the levain's or preferment's included. The
+/// water weighed into the bowl is what is left once the leaven's water is
+/// taken off — see [doughWaterPercent] — so [Recipe.hydration] comes out at
+/// exactly the figure typed in.
 ///
 /// Classic defaults *forward*: flour weight is given. The other two default
 /// *inverse*: finished dough weight is given, so flour is solved by dividing
@@ -81,9 +82,10 @@ Recipe _classic(RecipeInput input) {
 // ---------------------------------------------------------------------------
 // Sourdough / preferment: inverse by default. The dough weighs
 //
-//   doughFlour * (1 + hydration + salt + levain + fat + sugar) + eggs
+//   doughFlour * (1 + water + salt + levain + fat + sugar) + eggs
 //
-// with every term a fraction of the dough's flour, so the flour is that weight
+// with every term a fraction of the dough's flour — `water` being what is
+// added to the bowl, from [doughWaterPercent] — so the flour is that weight
 // less the eggs, divided by the bracket. The levain enters whole — flour, water
 // and yeast together — because it is weighed out as one lump. When
 // [RecipeInput.byFlourWeight] flips the input the other way, flour is simply
@@ -94,16 +96,17 @@ Recipe _classic(RecipeInput input) {
 Recipe _sourdough(RecipeInput input) {
   final levainPercent = _require(input.levainPercent, 'levainPercent');
   final levainHydration = _require(input.levainHydration, 'levainHydration');
-  final hydration = _require(input.hydration, 'hydration');
+  _require(input.hydration, 'hydration');
   final salt = _require(input.salt, 'salt');
+  final waterPercent = doughWaterPercent(input)!;
 
   final doughFlour = input.solvesForward
       ? _require(input.flourWeight, 'flourWeight')
       : _solveDoughFlour(
           input,
-          _denominator(input, hydration, salt, levainPercent),
+          _denominator(input, waterPercent, salt, levainPercent),
         );
-  final water = doughFlour * hydration / 100;
+  final water = doughFlour * waterPercent / 100;
 
   final levainTotal = doughFlour * levainPercent / 100;
   final levainFlour = levainTotal / (1 + levainHydration / 100);
@@ -146,16 +149,17 @@ Recipe _preferment(RecipeInput input) {
     'prefermentHydration',
   );
   final prefermentYeast = _require(input.prefermentYeast, 'prefermentYeast');
-  final hydration = _require(input.hydration, 'hydration');
+  _require(input.hydration, 'hydration');
   final salt = _require(input.salt, 'salt');
+  final waterPercent = doughWaterPercent(input)!;
 
   final doughFlour = input.solvesForward
       ? _require(input.flourWeight, 'flourWeight')
       : _solveDoughFlour(
           input,
-          _denominator(input, hydration, salt, prefermentPercent),
+          _denominator(input, waterPercent, salt, prefermentPercent),
         );
-  final water = doughFlour * hydration / 100;
+  final water = doughFlour * waterPercent / 100;
 
   // The preferment's own hydration and yeast are shares of ITS flour, so the
   // lump splits three ways in the ratio 1 : hydration : yeast.
@@ -193,6 +197,50 @@ Recipe _preferment(RecipeInput input) {
   );
 }
 
+/// The water weighed into the bowl, as a percentage of the dough's flour.
+///
+/// [RecipeInput.hydration] is the dough's total hydration, so the bowl gets
+/// that share of *all* the flour, the leaven's included, less the water the
+/// leaven already carries. For classic there is no leaven and this is just the
+/// hydration. Null while a field it needs is blank; negative when the leaven
+/// alone is wetter than the dough, which `validate()` reports as an error.
+double? doughWaterPercent(RecipeInput input) {
+  final hydration = input.hydration;
+  final leaven = _leavenShares(input);
+  if (hydration == null || leaven == null) return null;
+  return hydration * (1 + leaven.flour / 100) - leaven.water;
+}
+
+/// The flour and water a levain or preferment carries, each as a percentage
+/// of the dough's flour. The preferment's yeast is part of its weight but is
+/// neither.
+({double flour, double water})? _leavenShares(RecipeInput input) =>
+    switch (input.style) {
+      DoughStyle.classic => (flour: 0.0, water: 0.0),
+      DoughStyle.sourdough => switch ((
+        input.levainPercent,
+        input.levainHydration,
+      )) {
+        (final percent?, final hydration?) => (
+          flour: percent / (1 + hydration / 100),
+          water: percent / (1 + hydration / 100) * hydration / 100,
+        ),
+        _ => null,
+      },
+      DoughStyle.preferment => switch ((
+        input.prefermentPercent,
+        input.prefermentHydration,
+        input.prefermentYeast,
+      )) {
+        (final percent?, final hydration?, final yeast?) => (
+          flour: percent / (1 + hydration / 100 + yeast / 100),
+          water:
+              percent / (1 + hydration / 100 + yeast / 100) * hydration / 100,
+        ),
+        _ => null,
+      },
+    };
+
 /// Everything the dough weighs, per gram of dough flour. Mix-ins are left out
 /// on purpose: "total dough weight" is the dough, and seeds or olives are added
 /// on top of it.
@@ -204,13 +252,13 @@ Recipe _preferment(RecipeInput input) {
 /// shrank the flour for a row the recipe never shows.
 double _denominator(
   RecipeInput input,
-  double hydration,
+  double waterPercent,
   double salt,
   double leavenPercent,
 ) {
   final enrichment = input.enrichmentOrEmpty;
   return 1 +
-      hydration / 100 +
+      waterPercent / 100 +
       salt / 100 +
       leavenPercent / 100 +
       (enrichment.fatPercent ?? 0) / 100 +

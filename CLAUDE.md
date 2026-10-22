@@ -57,10 +57,13 @@ is a preferment, and a blend splits exactly that 100%.
   whole. Egg weight is subtracted **before** the division because eggs are a
   count, not a percentage of flour. Mix-ins are deliberately *outside* the
   denominator: "total dough weight" is the dough, and seeds go on top of it.
-- `Recipe.totalFlour`, `totalWater` and `hydration` still count what the levain
-  carries in, so the totals card shows the dough's **true** hydration, a little
-  above the figure typed in. It is labelled "Total hydration" for that reason —
-  the two numbers differing is correct, not a rounding bug.
+- **Hydration is the exception: it is the dough's total hydration** — all the
+  water over all the flour, the levain's or preferment's included. The water
+  weighed into the bowl is `doughWaterPercent(input)`: that share of the dough
+  flour plus the leaven's flour, less the leaven's water. That figure, not the
+  typed hydration, goes into the denominator and onto the table's Water row,
+  so `Recipe.hydration` comes back exactly as typed. A leaven wetter than the
+  whole dough would make it negative, and `validate()` errors on that.
 
 Do not put math in `state/` or `ui/`. If a screen needs a number, add a pure
 function to `domain/` and test it there. The recipe table is the example: it
@@ -129,10 +132,10 @@ which only warns when it misses. `ensureVisible` cannot reach an item a lazy
 `test/app_test.dart` defines these helpers, and new tests should use them
 rather than reaching for widget types:
 
-- `fieldNamed('Hydration')` — the `TextField` inside a `NumberField`/`NameField`,
+- `fieldNamed('Total hydration')` — the `TextField` inside a `NumberField`/`NameField`,
   matched on its `label`. The calculator's boxes hide the printed label
   (`showLabel: false`, the name sits beside the box instead) but keep it, so
-  the finder still works: `Flour weight`, `Hydration`, `Flour 1` and
+  the finder still works: `Flour weight`, `Total hydration`, `Flour 1` and
   `Flour 1 share`, `Mix-in 1` and `Mix-in 1 share`.
 - `actionBar('Plan this bake')` — the pinned primary action: `See recipe` on
   the calculator, `Save` on its recipe. A secondary button beside it (the

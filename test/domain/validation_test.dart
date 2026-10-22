@@ -51,7 +51,7 @@ void main() {
       expect(missing.map((i) => i.missing), [
         'Flour weight',
         'Yeast',
-        'Hydration',
+        'Total hydration',
       ]);
       expect(missing.first.message, 'Flour weight is required');
       // Out of range is a different problem: it is not "missing".

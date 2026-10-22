@@ -99,7 +99,7 @@ class _DoughFormState extends State<DoughForm> {
           title: 'Dough',
           children: [
             field(
-              label: 'Hydration',
+              label: 'Total hydration',
               hint: '65–80',
               value: input.hydration,
               issue: RecipeField.hydration,

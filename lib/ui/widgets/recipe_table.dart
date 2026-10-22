@@ -38,6 +38,7 @@ class RecipeTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final input = this.input;
     final enrichment = input.enrichmentOrEmpty;
+    final doughWater = doughWaterPercent(input);
 
     return Panel(
       padding: const EdgeInsets.symmetric(
@@ -57,8 +58,10 @@ class RecipeTable extends StatelessWidget {
         _line(
           context,
           name: 'Water',
-          percent: input.hydration,
-          grams: _grams(input.hydration),
+          // What goes in the bowl: the typed hydration is the dough's total,
+          // so a levain's water has already been taken off it.
+          percent: doughWater,
+          grams: _grams(doughWater),
         ),
         _line(
           context,
@@ -316,7 +319,7 @@ class TotalsPanel extends StatelessWidget {
             _Stat(label: 'Flour', value: formatMass(recipe.totalFlour, unit)),
             _Stat(label: 'Water', value: formatMass(recipe.totalWater, unit)),
             // "Total", because it counts the flour and water a levain carries
-            // in and so reads a little above the typed figure.
+            // in, which is why it reads above the bowl's Water row.
             _Stat(
               label: 'Total hydration',
               value: formatPercent(recipe.hydration),

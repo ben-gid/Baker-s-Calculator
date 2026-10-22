@@ -20,6 +20,7 @@ import 'package:bakers_calculator/domain/calculator.dart';
 import 'package:bakers_calculator/domain/models/dough_style.dart';
 import 'package:bakers_calculator/domain/models/recipe.dart';
 import 'package:bakers_calculator/domain/models/recipe_input.dart';
+import 'package:bakers_calculator/domain/validation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, Map<String, double>> loadGoldens() {
@@ -293,9 +294,11 @@ void main() {
       double gramsOf(IngredientGroup group, String name) =>
           group.ingredients.firstWhere((i) => i.name == name).grams;
 
-      // 900 g at 75/2/20 -> 1 + 0.75 + 0.02 + 0.20 = 1.97 shares of flour.
-      expect(flour, closeTo(900 / 1.97, 1e-9));
-      expect(gramsOf(dough, 'Water'), closeTo(flour * 0.75, 1e-9));
+      // 75% is the total hydration: 75% of 1.10 shares of flour is 0.825,
+      // and the levain brings 0.10 of it, so the bowl gets 0.725.
+      // 900 g at 72.5/2/20 -> 1 + 0.725 + 0.02 + 0.20 = 1.945 shares of flour.
+      expect(flour, closeTo(900 / 1.945, 1e-9));
+      expect(gramsOf(dough, 'Water'), closeTo(flour * 0.725, 1e-9));
       expect(gramsOf(dough, 'Salt'), closeTo(flour * 0.02, 1e-9));
       // The levain is weighed out whole, then split by its own hydration.
       expect(levain.grams, closeTo(flour * 0.20, 1e-9));
@@ -310,9 +313,9 @@ void main() {
       final flour = doughFlourRows(recipe, _sourdough).single.grams;
 
       expect(recipe.totalFlour, closeTo(flour * 1.10, 1e-9));
-      expect(recipe.totalWater, closeTo(flour * 0.85, 1e-9));
-      // So the true hydration reads above the 75% that was typed.
-      expect(recipe.hydration, closeTo(85 / 110 * 100, 1e-9));
+      expect(recipe.totalWater, closeTo(flour * 0.825, 1e-9));
+      // So the total hydration is exactly the 75% that was typed.
+      expect(recipe.hydration, closeTo(75, 1e-9));
     });
 
     test('a preferment carries its own yeast, not the dough denominator', () {
@@ -320,8 +323,11 @@ void main() {
       final flour = doughFlourRows(recipe, _preferment).single.grams;
       final pre = recipe.groups.firstWhere((g) => g.name == 'Preferment');
 
-      // 900 g at 72/2/30 -> 1 + 0.72 + 0.02 + 0.30 = 2.04.
-      expect(flour, closeTo(900 / 2.04, 1e-9));
+      // The lump is 0.30 / 2.002 flour and the same again water, and 72% of
+      // all the flour, less that water, goes in the bowl.
+      const preFlour = 0.30 / 2.002;
+      const water = 0.72 * (1 + preFlour) - preFlour;
+      expect(flour, closeTo(900 / (1 + water + 0.02 + 0.30), 1e-9));
       expect(pre.grams, closeTo(flour * 0.30, 1e-9));
       // The lump splits 1 : 1.00 : 0.002 between flour, water and yeast.
       final prefermentFlour = pre.ingredients.first.grams;
@@ -329,12 +335,22 @@ void main() {
       expect(pre.ingredients[1].grams, closeTo(prefermentFlour, 1e-9));
       expect(pre.ingredients[2].grams, closeTo(prefermentFlour * 0.002, 1e-9));
       expect(recipe.totalWeight, closeTo(900, 1e-9));
+      expect(recipe.hydration, closeTo(72, 1e-9));
+    });
+
+    test('a leaven wetter than the dough is an error, not negative water', () {
+      final input = _sourdough.copyWith(hydration: 5);
+      expect(doughWaterPercent(input), lessThan(0));
+      expect(
+        validate(input).forField(RecipeField.hydration).map((i) => i.severity),
+        contains(IssueSeverity.error),
+      );
     });
   });
 
   group('the table reads the same grams as the groups', () {
     // The calculator's table shows `gramsAt(typed percent)` beside each box
-    // rather than looking rows up by name. That only holds if it lands on the
+    // (for water, `doughWaterPercent`, what goes in the bowl) rather than looking rows up by name. That only holds if it lands on the
     // very numbers the groups carry, for every style and at any batch size.
     for (final entry in {
       'classic': _classic,
@@ -353,7 +369,10 @@ void main() {
             dough.ingredients.firstWhere((i) => i.name == name).grams;
 
         expect(recipe.doughFlour, closeTo(row('Flour'), 1e-9));
-        expect(recipe.gramsAt(input.hydration!), closeTo(row('Water'), 1e-9));
+        expect(
+          recipe.gramsAt(doughWaterPercent(input)!),
+          closeTo(row('Water'), 1e-9),
+        );
         expect(recipe.gramsAt(input.salt!), closeTo(row('Salt'), 1e-9));
         expect(recipe.gramsAt(8), closeTo(row('Fat'), 1e-9));
         expect(recipe.gramsAt(12), closeTo(row('Seeds'), 1e-9));

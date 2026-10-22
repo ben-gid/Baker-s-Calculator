@@ -176,7 +176,7 @@ void main() {
   /// 500 g flour at 70% water, 2% salt, 1% yeast: an 865 g classic loaf.
   Future<void> fillClassic(WidgetTester tester) async {
     await tester.enterText(fieldNamed('Flour weight'), '500');
-    await tester.enterText(fieldNamed('Hydration'), '70');
+    await tester.enterText(fieldNamed('Total hydration'), '70');
     await tester.enterText(fieldNamed('Salt'), '2');
     await tester.enterText(fieldNamed('Yeast'), '1');
     await tester.pumpAndSettle();
@@ -226,7 +226,7 @@ void main() {
     }
     // Arrived: the calculator's own jar, the sheet, and the blank dough.
     expect(
-      find.text('Needs flour weight, yeast, hydration and salt'),
+      find.text('Needs flour weight, yeast, total hydration and salt'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -244,14 +244,14 @@ void main() {
     );
     expect(find.text('Total dough'), findsNothing);
     expect(
-      find.text('Needs flour weight, yeast, hydration and salt'),
+      find.text('Needs flour weight, yeast, total hydration and salt'),
       findsOneWidget,
     );
     // Nothing to weigh yet, so no way on to the recipe.
     expect(tester.widget<ActionBar>(actionBar('See recipe')).onPressed, isNull);
 
     expect(
-      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      tester.widget<TextField>(fieldNamed('Total hydration')).controller!.text,
       isEmpty,
     );
   });
@@ -277,7 +277,7 @@ void main() {
     await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      tester.widget<TextField>(fieldNamed('Total hydration')).controller!.text,
       '70',
     );
   });
@@ -325,7 +325,7 @@ void main() {
     await openNewDough(tester);
     await fillClassic(tester);
 
-    await tester.enterText(fieldNamed('Hydration'), '99');
+    await tester.enterText(fieldNamed('Total hydration'), '99');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Very slack dough'), findsOneWidget);
@@ -353,7 +353,7 @@ void main() {
     expect(fieldNamed('Yeast'), findsNothing);
     expect(fieldNamed('Levain'), findsOneWidget);
     expect(
-      tester.widget<TextField>(fieldNamed('Hydration')).controller!.text,
+      tester.widget<TextField>(fieldNamed('Total hydration')).controller!.text,
       '70',
     );
 
@@ -759,7 +759,7 @@ void main() {
 
     expect(find.text('oz'), findsOneWidget);
     await tester.enterText(fieldNamed('Flour weight'), '20');
-    await tester.enterText(fieldNamed('Hydration'), '70');
+    await tester.enterText(fieldNamed('Total hydration'), '70');
     await tester.enterText(fieldNamed('Salt'), '2');
     await tester.enterText(fieldNamed('Yeast'), '1');
     await tester.pumpAndSettle();

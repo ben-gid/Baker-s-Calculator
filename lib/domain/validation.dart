@@ -6,6 +6,7 @@
 /// are advisory and must never block anything.
 library;
 
+import 'calculator.dart';
 import 'models/dough_style.dart';
 import 'models/recipe_input.dart';
 
@@ -206,20 +207,33 @@ List<InputIssue> validate(RecipeInput input) {
   final enrichmentLiquid =
       (input.enrichmentOrEmpty.fatPercent ?? 0) +
       (input.enrichmentOrEmpty.eggCount ?? 0) * 7;
-  present(input.hydration, RecipeField.hydration, 'Hydration');
+  present(input.hydration, RecipeField.hydration, 'Total hydration');
   present(input.salt, RecipeField.salt, 'Salt');
   range(
     input.hydration,
     RecipeField.hydration,
     min: 0,
     max: 250,
-    label: 'Hydration',
+    label: 'Total hydration',
     warnBelow: enrichmentLiquid >= 15 ? 0 : 50,
     warnAbove: 95,
     warning: (input.hydration ?? 0) > 95
         ? 'Very slack dough — hard to shape by hand'
         : 'Very stiff dough — this will be hard to mix',
   );
+  // Hydration is the dough's total, so the leaven's water counts towards it.
+  // A levain wetter than the whole dough would need water taken back out.
+  if (doughWaterPercent(input) case final water? when water < 0) {
+    final leaven = input.style == DoughStyle.sourdough
+        ? 'levain'
+        : 'preferment';
+    issues.add(
+      InputIssue.error(
+        RecipeField.hydration,
+        'The $leaven alone is wetter than this — raise the total hydration',
+      ),
+    );
+  }
   range(
     input.salt,
     RecipeField.salt,
