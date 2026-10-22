@@ -8,56 +8,48 @@ import 'library/library_page.dart';
 import 'recipe/import_page.dart';
 import 'recipe/recipe_page.dart';
 import 'settings/settings_page.dart';
-import 'shell.dart';
 import 'timeline/timeline_page.dart';
-import 'tools/tools_page.dart';
 import 'wizard/wizard_page.dart';
 
-/// Three tabs, each with its own navigation stack, plus full-screen routes
-/// pushed over the top.
+/// One stack, no tabs. Home is the jar and the shelf; everything else opens
+/// over it and backs out to it.
 ///
-/// The calculator lives inside the Home tab rather than being a tab of its
-/// own: Home is where a dough starts, and backing out of the calculator lands
-/// there.
+/// The calculator and the library are children of `/`, so `context.go` to
+/// either still has Home underneath. The calculator rises over Home rather
+/// than sliding in: its sheet comes up from below while the jar flies into its
+/// header (see `calculator_page.dart`).
 ///
-/// `/recipe/:id` and `/import` sit outside the shell so a shared link opens
-/// straight onto the content instead of behind a tab bar.
+/// `/recipe/:id` and `/import` sit at the top level so a shared link opens
+/// straight onto the content.
 GoRouter buildRouter() => GoRouter(
   initialLocation: '/',
   routes: [
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          AppShell(navigationShell: navigationShell),
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const HomePage(),
-              routes: [
-                GoRoute(
-                  path: 'calculate',
-                  builder: (context, state) => const CalculatorPage(),
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const HomePage(),
+      routes: [
+        GoRoute(
+          path: 'calculate',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            transitionDuration: const Duration(milliseconds: 520),
+            reverseTransitionDuration: const Duration(milliseconds: 380),
+            // The page itself only fades; its sheet does the rising, on the
+            // same animation, so the two stay in step.
+            transitionsBuilder: (context, animation, _, child) =>
+                FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: const Interval(0, 0.6, curve: Curves.easeOut),
+                  ),
+                  child: child,
                 ),
-              ],
-            ),
-          ],
+            child: const CalculatorPage(),
+          ),
         ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/recipes',
-              builder: (context, state) => const LibraryPage(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/tools',
-              builder: (context, state) => const ToolsPage(),
-            ),
-          ],
+        GoRoute(
+          path: 'recipes',
+          builder: (context, state) => const LibraryPage(),
         ),
       ],
     ),

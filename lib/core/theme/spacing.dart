@@ -31,9 +31,9 @@ abstract final class Insets {
 /// controls is rounder than a control, and anything that reads as a control in
 /// its own right is a full [pill].
 abstract final class Radii {
-  static const double card = 20;
-  static const double field = 14;
-  static const double chip = 12;
+  static const double card = 24;
+  static const double field = 16;
+  static const double chip = 16;
 
   /// Fully round. Applied to a fixed-height box, so any value past half the
   /// height gives the same shape — [BorderRadius.circular] clamps for us.

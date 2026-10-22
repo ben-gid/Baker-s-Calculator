@@ -18,8 +18,8 @@ import 'package:bakers_calculator/domain/models/saved_recipe.dart';
 import 'package:bakers_calculator/domain/timeline.dart';
 import 'package:bakers_calculator/state/providers.dart';
 import 'package:bakers_calculator/ui/widgets/action_bar.dart';
-import 'package:bakers_calculator/ui/widgets/app_nav_bar.dart';
 import 'package:bakers_calculator/ui/widgets/number_field.dart';
+import 'package:bakers_calculator/ui/widgets/starter_jar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,6 +116,16 @@ void main() {
     child: const BakersCalculatorApp(),
   );
 
+  /// The jar is alive — its surface and bubbles move for as long as it is on
+  /// screen — so `pumpAndSettle` would never settle. These tests ask for
+  /// reduced motion, which the jar and every entrance animation honour; the
+  /// moving path has its own test below.
+  void reduceMotion(WidgetTester tester) {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+  }
+
   /// A small phone, so the tests exercise the single-column layout most people
   /// will see. `flutter_test` otherwise defaults to 800x600, which trips the
   /// tablet breakpoint.
@@ -123,6 +133,7 @@ void main() {
     tester.view.physicalSize = const Size(375, 812);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    reduceMotion(tester);
   }
 
   /// Boots onto Home.
@@ -170,8 +181,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The full library, behind the shelf's "See all" on Home.
   Future<void> openRecipesTab(WidgetTester tester) async {
-    await tester.tap(find.text('Recipes'));
+    await tester.tap(find.text('See all'));
     await tester.pumpAndSettle();
   }
 
@@ -192,6 +204,31 @@ void main() {
     // Nothing saved yet, so the carousel offers the built-ins instead.
     expect(find.text('Built in'), findsOneWidget);
     expect(find.text('Country Sourdough'), findsOneWidget);
+  });
+
+  testWidgets('with motion on, the jar lives and flies into the calculator', (
+    tester,
+  ) async {
+    // No reduceMotion here: this is the path every other test skips. The jar
+    // never settles, so frames are pumped by time instead of pumpAndSettle.
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(app());
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(StarterJar), findsWidgets);
+
+    await tester.tap(find.text('New dough'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    // Arrived: the calculator's own jar, the sheet, and the blank dough.
+    expect(
+      find.text('Needs flour weight, yeast, hydration and salt'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a new dough starts blank and says what it needs', (
@@ -406,6 +443,9 @@ void main() {
     await tester.tap(sheetButton('Save'));
     await tester.pumpAndSettle();
 
+    // Back down to Home, then the whole library.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await openRecipesTab(tester);
 
     expect(find.text('Your recipes'), findsOneWidget);
@@ -500,21 +540,27 @@ void main() {
     await tester.tap(find.byTooltip('Open in calculator'));
     await tester.pumpAndSettle();
 
+    // A loaded recipe has its batch, so the batch line starts folded.
+    expect(find.text('900 g dough · 1 loaf'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('batch')));
+    await tester.pumpAndSettle();
     expect(fieldNamed('Dough weight'), findsOneWidget);
     // The built-in is a 90/10 blend, so the calculator should show both flours.
     expect(find.text('Bread flour'), findsWidgets);
   });
 
-  testWidgets('the dough temperature tool computes as you change inputs', (
+  testWidgets('the plan works out the water temperature as inputs change', (
     tester,
   ) async {
     await boot(tester);
-
-    await tester.tap(find.text('Tools'));
+    await openRecipesTab(tester);
+    await tester.tap(find.text('Country Sourdough'));
+    await tester.pumpAndSettle();
+    await tester.tap(actionBar('Plan this bake'));
     await tester.pumpAndSettle();
 
-    // Scrolls the dough-temperature card into view.
-    await tester.ensureVisible(find.text('Mixer'));
+    // The card sits at the foot of the plan, past the lazily built steps.
+    await tester.scrollUntilVisible(find.text('Mixer'), 300);
     await tester.pumpAndSettle();
 
     // 25 x 3 - (21 + 20 + 1) = 33
@@ -551,13 +597,12 @@ void main() {
     expect(notifications.scheduled, isNotNull);
     expect(find.textContaining('Reminders set'), findsOneWidget);
 
-    // Home now shows the bake under way, until it is stopped.
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Home'));
-    await tester.pumpAndSettle();
+    // Home now shows the bake under way, until it is stopped: back out of the
+    // plan, the recipe and the library.
+    for (var i = 0; i < 3; i++) {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
 
     expect(find.text('Stop bake'), findsOneWidget);
     expect(find.textContaining('Autolyse'), findsOneWidget);
@@ -593,8 +638,7 @@ void main() {
   testWidgets('the wizard composes a recipe and saves it', (tester) async {
     await boot(tester);
 
-    await tester.tap(find.text('Tools'));
-    await tester.pumpAndSettle();
+    // Nothing saved yet, so the tools sit on the empty jar.
     await tapVisible(tester, find.text('Suggest a recipe'));
 
     await tapVisible(tester, find.text('Rich and sweet'));
@@ -620,6 +664,7 @@ void main() {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    reduceMotion(tester);
 
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
@@ -629,15 +674,7 @@ void main() {
     await tester.tap(find.text('Country Sourdough').last);
     await tester.pumpAndSettle();
 
-    // A rail instead of a bottom bar, and the recipe visible without scrolling.
-    expect(
-      find.byWidgetPredicate((w) => w is AppNavBar && w.vertical),
-      findsOneWidget,
-    );
-    expect(
-      find.byWidgetPredicate((w) => w is AppNavBar && !w.vertical),
-      findsNothing,
-    );
+    // The jar and the totals beside the table, visible without scrolling.
     expect(find.text('Total dough'), findsOneWidget);
   });
 }

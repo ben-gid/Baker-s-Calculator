@@ -140,7 +140,15 @@ rather than reaching for widget types:
 - `openNewDough(tester)` and `fillClassic(tester)` — the app boots onto Home and
   the calculator starts blank, so a test that needs a recipe types one: 500 g
   flour at 70/2/1, an 865 g classic loaf.
-- `openRecipesTab(tester)`.
+- `openRecipesTab(tester)` — the full library, behind the shelf's "See all" on
+  Home. There are no tabs, so from anywhere else back out to Home first.
+
+**Widget tests run with reduced motion.** The jar is alive for as long as it is
+on screen, so `pumpAndSettle` would never settle; `usePhoneScreen` (and the
+wide-screen test) call `reduceMotion(tester)`, which the jar, `RiseIn`,
+`RollingText` and the batch line all honour. The one test that leaves motion on
+pumps frames by time instead. A new test that pumps the app itself must call
+`reduceMotion` too.
 
 `NumberField` keeps a real `TextField` inside it rather than rebuilding on
 `EditableText` — that is what preserves text selection, context menus and
@@ -156,72 +164,80 @@ the file read.
 
 ### Theme
 
-The design is **soft and tonal**: filled surfaces, generous radii, no rules,
-no shadows and no `surfaceTint` anywhere. Containers are told apart by their
-**fill**, not by a border — the page is a slightly grey ground, a panel is the
-lighter surface sitting on it, and a field is a slightly darker fill inside the
-panel, the way a grouped iOS list or a Material 3 filled card works. That is why
-`surface` is `0xFFF2F2F7` and not white: panels are white and have to sit on
-something.
+The look is **Starter Jar**: soft and organic, with fermentation as the hero —
+chosen by the user from the design system's directions, in light and dark on
+Settings' System / Light / Dark switch. A pale glass-sage page in light and a
+deep forest one in dark; white (or slightly raised) panels; deep sage, or light
+sage in dark, for action and selection; a honey-yellow starter for the answer.
+
+It is still filled and tonal: no rules, no shadows and no `surfaceTint`.
+Containers are told apart by their **fill**, not by a border — the page is a
+tinted ground, a panel is the lighter surface on it, and a field is a darker
+fill inside the panel. The calculator's recipe sits on a white sheet, so its
+table panel is the sheet's own colour and only the fields show; the batch line
+uses the page tone so its weight box still reads inside it.
 
 Radii come from [lib/core/theme/spacing.dart](lib/core/theme/spacing.dart) —
-`card` 20, `field` 14, `chip` 12, and `pill` for anything that reads as a control
-in its own right. `Radii.pill` is 999 and relies on Flutter scaling a radius down
-to fit the box, so it works on any height. Spacing is 4/8 dp only, plus
-`pagePadding(context)`, which every full-screen scroll uses. `Borders` has just
-`hair` and `focus`: a border is the exception here, for a divider or for the one
-control holding the keyboard.
+`card` 24, `field` 16, `chip` 16, and `pill` for anything that reads as a
+control in its own right. `Radii.pill` is 999 and relies on Flutter scaling a
+radius down to fit the box. Spacing is 4/8 dp only, plus `pagePadding(context)`,
+which every full-screen scroll uses. `Borders` has just `hair` and `focus`.
 
-Blue carries action and selection, a warm amber carries the result, and red and
-amber stay reserved for the two states that warn. Every accent has a *container*
-pair — a pale tint in light and a deep one in dark — because tonal containers are
-the point of this look: a filled block should belong to the surface it sits on
-rather than punch through it. `colorScheme.outline` is a mid grey used only where
-a control genuinely needs an edge; `outlineVariant` draws hairline dividers.
+`colorScheme.primary` and `BakingColors.proof` are deliberately the same sage:
+dough being ready *is* the brand. They stay separate names so a future change
+can split them again.
 
-Earlier looks that were built and rejected: warm artisan/terracotta (the user's
-call), an emerald "instrument" palette, and a hard-edged Bauhaus one with 2 dp
-ink rules and uppercase labels. Do not reintroduce any of them as a "fix" —
-in particular, do not put borders back on containers.
-
-`colorScheme.primary` and `BakingColors.proof` are deliberately the same blue:
-dough being ready *is* the brand, so "ready" and "accent" are one colour. They
-stay separate names so a future change can split them again.
-
-`BakingColors.proofContainer` is the totals block, and only **two** foregrounds
-are drawn on it — `onProofContainer` for the total and `onProofContainerMuted`
-for the labels. Both are their own tokens because `onSurface` and
-`onSurfaceVariant` are tuned against the page rather than against a warm amber
-fill and miss AA on it. `warn` and `proof` are deliberately kept *off* the block:
-the dough-temp advisory sits below it, where it reads better anyway. A third
-foreground needs a new token and a line in the contrast test, not a `copyWith`
-at the call site.
+`BakingColors.proofContainer` is the totals block (pale starter yellow in
+light, deep honey in dark), and only **two** foregrounds are drawn on it —
+`onProofContainer` and `onProofContainerMuted`. A third needs a new token and a
+line in the contrast test. `starter`, `starterDeep` and `bubble` are the jar's
+paint and nothing else: no text is ever drawn on the liquid, so they carry no
+contrast promise.
 
 Every colour comes from `Theme.of(context).colorScheme` or the `BakingColors`
 theme extension ([lib/core/theme/app_theme.dart](lib/core/theme/app_theme.dart)).
-No widget hardcodes a hex value.
+No widget hardcodes a hex value — the shader takes its colours as uniforms.
 
-Three faces. **Plus Jakarta Sans** (variable) is the display face for everything
-`titleMedium` and above, at 600–700 with slight negative tracking. **IBM Plex
-Sans** (variable) for body and labels. **IBM Plex Mono** for every gram,
-percentage and clock time — applied *only* through `numeric(style)`, which sets
-the family and `tabularFigures` together and clamps the weight into the
-400/500/600/700 that `pubspec.yaml` registers. Mono has no variable cut, so the
-clamp is what keeps the display scale free to go heavier without a number that
-borrows one of its styles being synthesised into a fake bold. Never reach for
-`numericFont` or `tabularFigures` directly.
+**One face: Nunito** (variable, wght 200–1000), for headings, body and every
+number. Its digits are all one width by design, so columns of grams line up
+without a monospace face; `numeric(style)` still marks every measurement and
+pins the weight variation, so a figures face would have one place to land.
+Every text style names the family itself rather than relying on
+`ThemeData.fontFamily`, because the button themes take their styles before
+`ThemeData` applies it and would otherwise fall back to the platform font.
 
 Nothing is uppercased. Headings are told from body text by size, weight and
 colour — `SectionLabel` in [lib/ui/widgets/panel.dart](lib/ui/widgets/panel.dart)
-is the section heading, and it sets `Semantics(header: true)` so the structure
-still reaches a screen reader.
+is the section heading, and it sets `Semantics(header: true)`.
 
-`test/theme_contrast_test.dart` re-measures every ratio the palette claims in
-its comments — AA (4.5:1) for text on all three surfaces, and 3:1 for
-`outline`, which draws the boundary of controls the baker operates.
-`outlineVariant` is exempt: panel dividers only. It also asserts the `numeric()`
-clamp, that the two faces land on the styles they are meant to, and that the
-tonal containers really do differ between the modes.
+`test/theme_contrast_test.dart` re-measures every ratio the palette claims —
+AA (4.5:1) for text on all three surfaces, 3:1 for `outline` — and asserts that
+every style is set in Nunito at a weight its variation agrees with, and that the
+tonal containers differ between the modes.
+
+### The jar and motion
+
+[lib/ui/widgets/starter_jar.dart](lib/ui/widgets/starter_jar.dart) is the app's
+one living visual: a fragment shader
+([shaders/starter_jar.frag](shaders/starter_jar.frag), registered under
+`flutter: shaders:`) draws the glass, lid, a waving surface, rising bubbles and
+a glass highlight. The widget eases `level` and `dome` to new values and feeds
+the shader the time; uniform order in the `.frag` and the `setFloat` calls must
+stay in step. A painted still jar stands in while the shader loads. The ticker
+only runs while the jar's route is showing, and stops under reduced motion.
+
+What the jar means is decided by its screen, never inside it. Home: a bake under
+way rises with `ActiveBake.riseAt(now)` (fermenting time elapsed, domes when
+ready); otherwise the dough being built fills to its hydration; otherwise an
+empty jar. The calculator's header jar fills to the hydration as you type. Home's
+jar and the calculator's share `jarHeroTag`, so one flies into the other.
+
+Motion is spent on the jar and on moving between places; cards, lists and text
+stay still. The vocabulary in [lib/ui/widgets/motion.dart](lib/ui/widgets/motion.dart)
+is `RiseIn` (a section drifts up as it fades in, with a short stagger) and
+`RollingText` (a changed total rolls up into place). Everything honours
+`MediaQuery.disableAnimationsOf`. Do not add motion elsewhere without a reason
+the baker would notice.
 
 ### Material 3 is the substrate, not the look
 
@@ -236,7 +252,6 @@ only the handful of widgets that *read* as Material, and each lives in
 | `Panel` | `Card` |
 | `RecipeTable` / `RecipeSummary` | the form *and* the result — one table, editable in the calculator, read-only everywhere else |
 | `StyleToggle` | `SegmentedButton` (a sliding thumb instead of a checkmark) |
-| `AppNavBar` | `NavigationBar` / `NavigationRail` (the pill indicator) |
 | `ActionBar` | `FloatingActionButton.extended` |
 | `NumberField` / `NameField` | the floating-label `InputDecoration` |
 
@@ -251,20 +266,29 @@ already here.
 
 ### Navigation
 
-`go_router` with a three-branch `StatefulShellRoute` (Home / Recipes / Tools).
-The calculator is `/calculate`, a child of Home rather than a tab: Home's "New
-dough" clears the dough and opens it, and backing out lands on Home.
-`/recipe/:id`, `/recipe/:id/plan`, `/import`, `/suggest` and `/settings` sit
-outside the shell so a shared link opens straight onto content.
+One `go_router` stack and **no tab bar**. Home (`/`) is the hub: the jar, the
+New dough button and a horizontal recipe shelf whose "See all" opens the
+library (`/recipes`). The calculator (`/calculate`) and the library are children
+of `/`, so `context.go` to either keeps Home underneath, and backing out lands
+there. The calculator has its own transition: the page fades while its sheet
+rises on the route's animation and the jar flies into its header.
+`/recipe/:id`, `/recipe/:id/plan`, `/import`, `/suggest` and `/settings` are
+top-level so a shared link opens straight onto content.
 
-The calculator is laid out to fit a 375x812 phone without scrolling for a plain
-recipe — that was the point of the table. Rows are a 44 dp box on a 48 dp
-pitch; adding height to a row, or a panel above the table, pushes the totals
-under the nav bar. A blended, enriched recipe is allowed to scroll a little.
+Tools live where they are used, not on a screen of their own. Suggest and
+Import sit on the empty jar until the baker has saved a recipe, then at the end
+of the shelf — one place at a time. The dough-temperature card is at the foot
+of the bake plan.
+
+The calculator shows only the rows its style needs; fat, sugar, eggs, blends
+and mix-ins wait behind "Add ingredient". The batch (which weight drives it, and
+how many loaves) folds to one line — "500 g flour · 1 loaf" — once it has a
+weight, and opens on a tap; a new dough starts with it open. Tests reach it with
+`find.byKey(const Key('batch'))`.
 
 "Start bake" saves an `ActiveBake` (the schedule exactly as started, edited
 durations included) to `SharedPreferences` through `SettingsRepository`, and
-Home's bake card reads it. It is recorded even when notification permission is
+Home's jar reads it. It is recorded even when notification permission is
 refused, and "Stop bake" clears it and cancels the reminders.
 `bakerscalc://import?d=<base64url>` is registered in the Android manifest and
 iOS `Info.plist`.

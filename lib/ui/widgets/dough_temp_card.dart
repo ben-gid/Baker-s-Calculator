@@ -1,60 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../domain/dough_temp.dart';
-import '../widgets/number_field.dart';
-import '../widgets/panel.dart';
-import '../widgets/style_toggle.dart';
-
-class ToolsPage extends StatelessWidget {
-  const ToolsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Tools')),
-      body: SafeArea(
-        child: ListView(
-          padding: pagePadding(context),
-          children: [
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.auto_awesome_outlined),
-                title: const Text('Suggest a recipe'),
-                subtitle: const Text('Answer four questions, get a recipe'),
-                onTap: () => context.push('/suggest'),
-              ),
-            ),
-            const SizedBox(height: Insets.md),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.upload_file_outlined),
-                title: const Text('Import a recipe'),
-                subtitle: const Text('Paste a shared link or code'),
-                onTap: () => context.push('/import'),
-              ),
-            ),
-            const SizedBox(height: Insets.md),
-            const _DoughTempCard(),
-          ],
-        ),
-      ),
-    );
-  }
-}
+import 'number_field.dart';
+import 'panel.dart';
+import 'style_toggle.dart';
 
 /// Desired dough temperature. A separate little calculator rather than part of
-/// the recipe, because bakers reach for it at mixing time, not planning time.
-class _DoughTempCard extends StatefulWidget {
-  const _DoughTempCard();
+/// the recipe, because bakers reach for it at mixing time — which is why it
+/// lives on the bake plan, beside the steps it is used for.
+class DoughTempCard extends StatefulWidget {
+  const DoughTempCard({super.key});
 
   @override
-  State<_DoughTempCard> createState() => _DoughTempCardState();
+  State<DoughTempCard> createState() => _DoughTempCardState();
 }
 
-class _DoughTempCardState extends State<_DoughTempCard> {
+class _DoughTempCardState extends State<DoughTempCard> {
   double? _desired = 25;
   double? _room = 21;
   double? _flour = 20;

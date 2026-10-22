@@ -25,6 +25,39 @@ class ActiveBake {
     return null;
   }
 
+  /// How far the dough has risen at [now], for Home's jar: [level] climbs
+  /// from [restLevel] to [peakLevel] with the share of fermenting time (bulk,
+  /// folds and proof) that has passed, and [ready] turns true once all of it
+  /// is behind — the dough is at its peak and wants the oven.
+  ///
+  /// Shaping knocks real dough back; the jar deliberately does not, so it only
+  /// ever rises while you watch it.
+  ({double level, bool ready}) riseAt(DateTime now) {
+    var total = Duration.zero;
+    var elapsed = Duration.zero;
+    for (final s in steps) {
+      if (!_ferments.contains(s.step.kind)) continue;
+      final length = s.endsAt.difference(s.startsAt);
+      total += length;
+      if (!now.isAfter(s.startsAt)) continue;
+      final done = now.difference(s.startsAt);
+      elapsed += done < length ? done : length;
+    }
+    if (total == Duration.zero) {
+      final over = stepAt(now) == null;
+      return (level: over ? peakLevel : restLevel, ready: over);
+    }
+    final share = elapsed.inSeconds / total.inSeconds;
+    return (
+      level: restLevel + (peakLevel - restLevel) * share,
+      ready: share >= 1,
+    );
+  }
+
+  static const restLevel = 0.35;
+  static const peakLevel = 0.85;
+  static const _ferments = {StepKind.bulk, StepKind.fold, StepKind.proof};
+
   ScheduledStep? stepAfter(ScheduledStep step) {
     final index = steps.indexOf(step);
     return index < 0 || index + 1 >= steps.length ? null : steps[index + 1];

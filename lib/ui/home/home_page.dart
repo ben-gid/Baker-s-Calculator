@@ -9,92 +9,82 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../domain/calculator.dart';
 import '../../domain/models/active_bake.dart';
+import '../../domain/models/recipe.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
+import '../widgets/motion.dart';
 import '../widgets/panel.dart';
+import '../widgets/starter_jar.dart';
 
-/// The front door: start a dough, see the bake that is running, or pick up a
-/// recent recipe — each one tap from here.
+/// The hub. One jar that shows whatever matters now — a bake rising, the dough
+/// you were building, or an empty jar waiting — and a shelf of recipes under
+/// it. There are no tabs: everything else opens over this and backs out to it.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final bake = ref.watch(activeBakeProvider);
-    final inProgress = ref.watch(calculationProvider);
+    final dough = ref.watch(calculationProvider);
     final library = ref.watch(libraryProvider).value;
-    final settings = ref.watch(settingsProvider);
+    final unit = ref.watch(settingsProvider.select((s) => s.unit));
 
     final saved = library?.saved ?? const <SavedRecipe>[];
     final recents = saved.isNotEmpty
         ? saved.take(10).toList()
         : library?.system ?? const <SavedRecipe>[];
 
+    // Before the baker has saved anything, the tools sit on the empty jar;
+    // after, they move to the end of the shelf. One place at a time.
+    final firstLaunch = library != null && saved.isEmpty;
+
+    void newDough() {
+      ref.read(calculatorProvider.notifier).reset();
+      context.go('/calculate');
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Baker's Calculator"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: () => context.push('/settings'),
-          ),
-          const SizedBox(width: Insets.xs),
-        ],
-      ),
       body: SafeArea(
         child: ListView(
-          padding: pagePadding(context),
+          padding: pagePadding(context, top: Insets.sm),
           children: [
-            SizedBox(
-              height: 56,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('New dough'),
-                onPressed: () {
-                  ref.read(calculatorProvider.notifier).reset();
-                  context.go('/calculate');
-                },
+            RiseIn(child: _TopBar()),
+            const SizedBox(height: Insets.md),
+            RiseIn(
+              delay: const Duration(milliseconds: 60),
+              child: _JarHero(
+                bake: bake,
+                dough: dough,
+                unit: unit,
+                showTools: firstLaunch && bake == null && dough == null,
+                onNewDough: newDough,
               ),
             ),
-            // A dough that already works is worth getting back to; "New
-            // dough" would otherwise be the only way in, and it clears it.
-            if (inProgress != null) ...[
-              const SizedBox(height: Insets.sm),
-              TextButton(
-                onPressed: () => context.go('/calculate'),
-                child: Text(
-                  'Back to your ${formatMass(inProgress.totalWeight, settings.unit)} dough',
+            const SizedBox(height: Insets.xl),
+            RiseIn(
+              delay: const Duration(milliseconds: 120),
+              child: SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('New dough'),
+                  onPressed: newDough,
                 ),
               ),
-            ],
-            if (bake != null) ...[
-              const SizedBox(height: Insets.lg),
-              _BakeCard(bake: bake),
-            ],
+            ),
             if (recents.isNotEmpty) ...[
               const SizedBox(height: Insets.xl),
-              SectionLabel(saved.isNotEmpty ? 'Recent' : 'Built in'),
-              const SizedBox(height: Insets.sm),
-              SizedBox(
-                height: 112,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: recents.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: Insets.sm),
-                  itemBuilder: (context, index) =>
-                      _RecipeCard(recipe: recents[index], unit: settings.unit),
+              RiseIn(
+                delay: const Duration(milliseconds: 180),
+                child: _Shelf(
+                  title: saved.isNotEmpty ? 'Recent' : 'Built in',
+                  recipes: recents,
+                  unit: unit,
+                  showTools: !firstLaunch,
                 ),
               ),
             ],
-            const SizedBox(height: Insets.xl),
-            Text(
-              'Every new dough starts blank. Use Template in the calculator to '
-              'start from a recipe instead.',
-              style: theme.textTheme.bodySmall,
-            ),
           ],
         ),
       ),
@@ -102,40 +92,162 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-/// What the running bake is doing now, and what comes next. Re-reads the clock
-/// once a minute, which is as fine as the plan itself is.
-class _BakeCard extends ConsumerStatefulWidget {
-  const _BakeCard({required this.bake});
-
-  final ActiveBake bake;
-
+class _TopBar extends StatelessWidget {
   @override
-  ConsumerState<_BakeCard> createState() => _BakeCardState();
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          "Baker's Calculator",
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+      ),
+      IconButton(
+        icon: const Icon(Icons.settings_outlined),
+        tooltip: 'Settings',
+        onPressed: () => context.push('/settings'),
+      ),
+    ],
+  );
 }
 
-class _BakeCardState extends ConsumerState<_BakeCard> {
-  late final Timer _tick;
+/// The jar and what it is showing. Stateful only to tick once a minute while a
+/// bake is under way, so the rise and the countdown keep moving.
+class _JarHero extends StatefulWidget {
+  const _JarHero({
+    required this.bake,
+    required this.dough,
+    required this.unit,
+    required this.showTools,
+    required this.onNewDough,
+  });
+
+  final ActiveBake? bake;
+  final Recipe? dough;
+  final MassUnit unit;
+  final bool showTools;
+  final VoidCallback onNewDough;
+
+  @override
+  State<_JarHero> createState() => _JarHeroState();
+}
+
+class _JarHeroState extends State<_JarHero> {
+  Timer? _tick;
 
   @override
   void initState() {
     super.initState();
-    _tick = Timer.periodic(const Duration(minutes: 1), (_) => setState(() {}));
+    _syncTick();
+  }
+
+  @override
+  void didUpdateWidget(_JarHero old) {
+    super.didUpdateWidget(old);
+    _syncTick();
+  }
+
+  void _syncTick() {
+    if (widget.bake == null) {
+      _tick?.cancel();
+      _tick = null;
+    } else {
+      _tick ??= Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => setState(() {}),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _tick.cancel();
+    _tick?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final bake = widget.bake;
+    final dough = widget.dough;
     final now = DateTime.now();
-    final step = widget.bake.stepAt(now);
-    final next = step == null ? null : widget.bake.stepAfter(step);
-    final onFill = TextStyle(color: colors.onPrimaryContainer);
+
+    final ({double level, double dome, double fizz, String label}) jar;
+    final VoidCallback onTap;
+    final Widget caption;
+
+    if (bake != null) {
+      final rise = bake.riseAt(now);
+      jar = (
+        level: rise.level,
+        dome: rise.ready ? 1 : 0,
+        fizz: 0.9,
+        label: 'Your bake, ${rise.ready ? 'ready' : 'rising'}',
+      );
+      onTap = () => context.push('/recipe/${bake.recipeId}/plan');
+      caption = _BakeCaption(bake: bake, now: now);
+    } else if (dough != null) {
+      jar = (
+        level: (dough.hydration / 100).clamp(0.15, 0.95),
+        dome: 0,
+        fizz: 0.5,
+        label: 'Your dough, ${formatPercent(dough.hydration)} hydration',
+      );
+      onTap = () => context.go('/calculate');
+      caption = _DoughCaption(dough: dough, unit: widget.unit);
+    } else {
+      jar = (level: 0.3, dome: 0, fizz: 0.25, label: 'An empty jar');
+      onTap = widget.onNewDough;
+      caption = _EmptyCaption(showTools: widget.showTools);
+    }
+
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: jar.label,
+          excludeSemantics: true,
+          child: GestureDetector(
+            onTap: onTap,
+            child: Hero(
+              tag: jarHeroTag,
+              child: SizedBox(
+                width: 184,
+                height: 236,
+                child: StarterJar(
+                  level: jar.level,
+                  dome: jar.dome,
+                  fizz: jar.fizz,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+        AnimatedSwitcher(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          child: KeyedSubtree(
+            key: ValueKey(caption.runtimeType),
+            child: caption,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BakeCaption extends ConsumerWidget {
+  const _BakeCaption({required this.bake, required this.now});
+
+  final ActiveBake bake;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final step = bake.stepAt(now);
+    final next = step == null ? null : bake.stepAfter(step);
 
     final String headline;
     if (step == null) {
@@ -149,34 +261,185 @@ class _BakeCardState extends ConsumerState<_BakeCard> {
           '${step.step.title} · ${formatDuration(step.endsAt.difference(now))} left';
     }
 
-    return Panel(
-      fill: colors.primaryContainer,
+    return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SectionLabel(
-                widget.bake.recipeName,
-                color: colors.onPrimaryContainer,
-              ),
-            ),
-            TextButton(
-              onPressed: () => ref.read(activeBakeProvider.notifier).stop(),
-              child: Text(step == null ? 'Clear' : 'Stop bake'),
-            ),
-          ],
+        SectionLabel(bake.recipeName),
+        const SizedBox(height: Insets.xs),
+        Text(
+          headline,
+          textAlign: TextAlign.center,
+          style: numeric(theme.textTheme.titleLarge),
         ),
-        Text(headline, style: theme.textTheme.titleMedium?.merge(onFill)),
         if (next != null) ...[
           const SizedBox(height: Insets.xs),
           Text(
             'Then ${next.step.title.toLowerCase()} at ${formatClock(next.startsAt)}',
-            style: theme.textTheme.bodySmall?.merge(onFill),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+        TextButton(
+          onPressed: () => ref.read(activeBakeProvider.notifier).stop(),
+          child: Text(step == null ? 'Clear' : 'Stop bake'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DoughCaption extends StatelessWidget {
+  const _DoughCaption({required this.dough, required this.unit});
+
+  final Recipe dough;
+  final MassUnit unit;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(
+        '${formatPercent(dough.hydration)} hydration',
+        style: numeric(Theme.of(context).textTheme.bodyMedium),
+      ),
+      const SizedBox(height: Insets.sm),
+      FilledButton.tonal(
+        onPressed: () => context.go('/calculate'),
+        child: Text(
+          'Back to your ${formatMass(dough.totalWeight, unit)} dough',
+        ),
+      ),
+    ],
+  );
+}
+
+class _EmptyCaption extends StatelessWidget {
+  const _EmptyCaption({required this.showTools});
+
+  final bool showTools;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Text(
+          'Every dough starts with an empty jar.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+        if (showTools) ...[
+          const SizedBox(height: Insets.md),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: Insets.sm,
+            runSpacing: Insets.sm,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                label: const Text('Suggest a recipe'),
+                onPressed: () => context.push('/suggest'),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.download_outlined, size: 18),
+                label: const Text('Import a recipe'),
+                onPressed: () => context.push('/import'),
+              ),
+            ],
           ),
         ],
       ],
     );
   }
+}
+
+/// Recipes like jars on a shelf: a swipe away, with the whole library behind
+/// "See all". Once the baker has recipes of their own, the two tools close the
+/// row.
+class _Shelf extends StatelessWidget {
+  const _Shelf({
+    required this.title,
+    required this.recipes,
+    required this.unit,
+    required this.showTools,
+  });
+
+  final String title;
+  final List<SavedRecipe> recipes;
+  final MassUnit unit;
+  final bool showTools;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      for (final recipe in recipes) _RecipeCard(recipe: recipe, unit: unit),
+      if (showTools) ...const [
+        _ToolCard(
+          icon: Icons.auto_awesome_outlined,
+          title: 'Suggest a recipe',
+          subtitle: 'Four questions',
+          route: '/suggest',
+        ),
+        _ToolCard(
+          icon: Icons.download_outlined,
+          title: 'Import a recipe',
+          subtitle: 'From a link or code',
+          route: '/import',
+        ),
+      ],
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: SectionLabel(title)),
+            TextButton(
+              onPressed: () => context.push('/recipes'),
+              child: const Text('See all'),
+            ),
+          ],
+        ),
+        const SizedBox(height: Insets.xs),
+        SizedBox(
+          height: 152,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: cards.length,
+            separatorBuilder: (_, _) => const SizedBox(width: Insets.sm),
+            itemBuilder: (context, index) => cards[index],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShelfCard extends StatelessWidget {
+  const _ShelfCard({required this.onTap, required this.children});
+
+  final VoidCallback onTap;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 156,
+    child: Material(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(Radii.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _RecipeCard extends StatelessWidget {
@@ -188,42 +451,70 @@ class _RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final weight = validate(recipe.input).hasErrors
+    final result = validate(recipe.input).hasErrors
         ? null
-        : calculate(recipe.input).totalWeight;
+        : calculate(recipe.input);
 
-    return SizedBox(
-      width: 176,
-      child: Material(
-        color: theme.colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(Radii.card),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push('/recipe/${recipe.id}'),
-          child: Padding(
-            padding: const EdgeInsets.all(Insets.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  recipe.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall,
-                ),
-                const Spacer(),
-                Text(
-                  [
-                    recipe.input.style.label,
-                    if (weight != null) formatMass(weight, unit),
-                  ].join(' · '),
-                  style: numeric(theme.textTheme.bodySmall),
-                ),
-              ],
-            ),
+    return _ShelfCard(
+      onTap: () => context.push('/recipe/${recipe.id}'),
+      children: [
+        // A little still jar at this recipe's hydration.
+        SizedBox(
+          width: 30,
+          height: 38,
+          child: StarterJar(
+            level: ((result?.hydration ?? 30) / 100).clamp(0.15, 0.95),
+            fizz: 0.3,
+            animate: false,
           ),
         ),
-      ),
+        const Spacer(),
+        Text(
+          recipe.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall,
+        ),
+        const SizedBox(height: Insets.xs),
+        Text(
+          [
+            recipe.input.style.label,
+            if (result != null) formatMass(result.totalWeight, unit),
+          ].join(' · '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: numeric(theme.textTheme.bodySmall),
+        ),
+      ],
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  const _ToolCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _ShelfCard(
+      onTap: () => context.push(route),
+      children: [
+        Icon(icon, color: theme.colorScheme.primary),
+        const Spacer(),
+        Text(title, maxLines: 2, style: theme.textTheme.titleSmall),
+        const SizedBox(height: Insets.xs),
+        Text(subtitle, maxLines: 1, style: theme.textTheme.bodySmall),
+      ],
     );
   }
 }

@@ -127,14 +127,11 @@ void main() {
         }
       });
 
-      // pubspec registers Plex Mono at 400/500/600/700 only. The display scale
-      // uses 800, which is fine for the variable faces but has no file behind
-      // it in mono — so `numeric()` clamps rather than the text theme being
-      // held back. This asserts the clamp, since that is what actually protects
-      // the numbers now: every style is fed through it, including the heaviest.
-      test('numbers are set in the mono face at a weight that ships', () {
-        expect(numericFont, 'IBMPlexMono');
-        for (final style in [
+      // One face, and it is variable, so every weight is a real cut — as long
+      // as the variation agrees with the weight asked for.
+      test('every style is set in the one face, at the weight it asks for', () {
+        final styles = [
+          theme.textTheme.displayMedium,
           theme.textTheme.displaySmall,
           theme.textTheme.headlineMedium,
           theme.textTheme.headlineSmall,
@@ -142,45 +139,24 @@ void main() {
           theme.textTheme.titleMedium,
           theme.textTheme.titleSmall,
           theme.textTheme.bodyLarge,
+          theme.textTheme.bodyMedium,
           theme.textTheme.bodySmall,
+          theme.textTheme.labelLarge,
           theme.textTheme.labelMedium,
           theme.textTheme.labelSmall,
-        ]) {
-          final measured = numeric(style);
-          expect(measured.fontFamily, numericFont);
-          expect(measured.fontFeatures, tabularFigures);
+        ];
+        for (final style in styles) {
+          expect(style!.fontFamily, appFont);
           expect(
-            measured.fontWeight!.value,
-            isIn([400, 500, 600, 700]),
-            reason: 'mono has no file for w${measured.fontWeight!.value}',
+            style.fontVariations!.single.value,
+            style.fontWeight!.value.toDouble(),
           );
-          // The variation has to agree with the weight, or a variable fallback
-          // would render a different cut from the one asked for.
+          final measured = numeric(style);
+          expect(measured.fontFamily, appFont);
           expect(
             measured.fontVariations!.single.value,
             measured.fontWeight!.value.toDouble(),
           );
-        }
-      });
-
-      // Two faces, and each is asked only for weights it can really draw.
-      test('the display scale uses the geometric face', () {
-        for (final style in [
-          theme.textTheme.displaySmall,
-          theme.textTheme.headlineMedium,
-          theme.textTheme.headlineSmall,
-          theme.textTheme.titleLarge,
-          theme.textTheme.titleMedium,
-        ]) {
-          expect(style!.fontFamily, displayFont);
-        }
-        // Body and labels take the text face `ThemeData.fontFamily` applies.
-        for (final style in [
-          theme.textTheme.bodyLarge,
-          theme.textTheme.bodySmall,
-          theme.textTheme.labelMedium,
-        ]) {
-          expect(style!.fontFamily, 'IBMPlexSans');
         }
       });
     });

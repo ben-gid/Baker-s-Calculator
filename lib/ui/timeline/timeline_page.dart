@@ -11,6 +11,7 @@ import '../../domain/timeline.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/action_bar.dart';
+import '../widgets/dough_temp_card.dart';
 import '../widgets/panel.dart';
 
 /// A bake plan: every step laid end to end from a start time, with reminders.
@@ -88,6 +89,10 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
                   () => _timeline = timeline.replaceStep(i, duration),
                 ),
               ),
+            // At the foot of the plan, for mixing day: how warm the water
+            // needs to be.
+            const SizedBox(height: Insets.lg),
+            const DoughTempCard(),
           ],
         ),
       ),

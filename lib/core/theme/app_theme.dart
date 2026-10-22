@@ -1,85 +1,87 @@
-/// Soft tonal palette: filled surfaces, generous radii, no rules and no shadows.
+/// Starter Jar: soft, organic and calm, with fermentation as the hero. A pale
+/// sage page in light mode and a deep forest one in dark, white or deep-green
+/// panels on it, sage for action and a honey-yellow starter for the answer.
 ///
 /// Containers are told apart by their **fill**, not by a border. The page is a
-/// slightly grey ground, a panel is the lighter surface sitting on it, and a
-/// field is a slightly darker fill inside the panel — the way a grouped iOS list
-/// or a Material 3 filled card works. `colorScheme.outline` is a mid grey and is
-/// only used where a control genuinely needs an edge; `outlineVariant` draws the
-/// hairline dividers inside a panel.
+/// tinted ground, a panel is the lighter (or, in dark, slightly raised) surface
+/// on it, and a field is a darker fill inside the panel. `colorScheme.outline`
+/// is only used where a control genuinely needs an edge; `outlineVariant` draws
+/// hairline dividers and the jar's glass rim.
 ///
-/// Blue carries action and selection, and a warm amber carries the result. Red
-/// and amber stay reserved for the two states that warn. Every accent has a
-/// *container* pair — a pale tint in light mode and a deep one in dark — because
-/// tonal containers are the whole point of this look: a filled block should
-/// belong to the surface it sits on rather than punch through it.
+/// Sage carries action and selection, the starter's yellow carries the result,
+/// and red and amber stay reserved for the two states that warn. Every accent
+/// has a *container* pair — a pale tint in light and a deep one in dark.
 ///
-/// [BakingColors.proofContainer] is the totals block, and it is mode-dependent
-/// like every other container. Only two foregrounds are drawn on it —
-/// [BakingColors.onProofContainer] for the total and
-/// [BakingColors.onProofContainerMuted] for the labels. `warn` and `proof` are
-/// deliberately kept off it: the dough-temp advisory sits *below* the block,
-/// where it reads better anyway, and a third foreground would need its own token
-/// and a line in the contrast test rather than a `copyWith` at the call site.
+/// [BakingColors.proofContainer] is the totals block. Only two foregrounds are
+/// drawn on it — [BakingColors.onProofContainer] for the total and
+/// [BakingColors.onProofContainerMuted] for the labels. The jar's own colours —
+/// [BakingColors.starter], [BakingColors.starterDeep] and [BakingColors.bubble]
+/// — are paint only: no text is ever drawn on the liquid.
 ///
-/// `primary` and [BakingColors.proof] are deliberately the same blue — the dough
-/// being ready *is* the brand, so "ready" and "accent" are one colour. They stay
-/// separate names so a future change can split them again.
+/// `primary` and [BakingColors.proof] are deliberately the same sage — the
+/// dough being ready *is* the brand. They stay separate names so a future
+/// change can split them again.
 ///
 /// Every colour in the app comes from `Theme.of(context).colorScheme` or the
 /// [BakingColors] extension below — no widget hardcodes a hex value. Contrast
-/// ratios in the comments are measured against the surface of that mode and are
-/// all at or above WCAG AA for their use; `test/theme_contrast_test.dart`
-/// re-measures every one of them.
+/// ratios in the comments are measured against the surfaces of that mode, and
+/// `test/theme_contrast_test.dart` re-measures every one of them.
 library;
 
 import 'package:flutter/material.dart';
 
 import 'spacing.dart';
 
-const _seed = Color(0xFF2547C4); // blue — derives the cool neutrals
+const _seed = Color(0xFF3F5A3C); // sage — derives the neutrals
 
 abstract final class _Light {
-  /// The page. Deliberately *not* white: panels are white and have to sit on
-  /// something, since nothing is outlined any more.
-  static const surface = Color(0xFFF2F2F7);
+  /// The page: pale glass sage. Panels are white and sit on it.
+  static const surface = Color(0xFFEEF2E8);
   static const surfaceContainer = Color(0xFFFFFFFF);
-  static const surfaceContainerHigh = Color(0xFFE8E8EF);
-  static const onSurface = Color(0xFF1B1B1F); // 15.4:1
-  static const onSurfaceVariant = Color(0xFF46464F); // 8.4:1
-  static const primary = Color(0xFF2547C4); // 6.8:1
-  static const onPrimary = Color(0xFFFFFFFF); // 7.6:1 on primary
-  static const primaryContainer = Color(0xFFDDE3FF); // pale tonal blue
-  static const onPrimaryContainer = Color(0xFF152C7A); // 9.9:1
-  static const outline = Color(0xFF74747E); // 4.1:1 — control edges
-  static const outlineVariant = Color(0xFFC7C6D0); // hairline dividers only
-  static const error = Color(0xFFBA1A1A); // 5.8:1
-  static const onError = Color(0xFFFFFFFF); // 6.5:1 on error
-  static const proof = Color(0xFF2547C4); // the accent itself — see below
-  static const proofContainer = Color(0xFFFFEFC2); // pale tonal amber
-  static const onProofContainer = Color(0xFF3D2E00); // 11.6:1 — the total
-  static const onProofContainerMuted = Color(0xFF5C4600); // 7.9:1 — the labels
-  static const warn = Color(0xFF7A5900); // 5.8:1
+  static const surfaceContainerHigh = Color(0xFFE3EADB);
+  static const onSurface = Color(0xFF24331F); // 11.9:1
+  static const onSurfaceVariant = Color(0xFF55664F); // 5.0:1 on the field fill
+  static const primary = Color(0xFF3F5A3C); // deep sage, 6.3:1
+  static const onPrimary = Color(0xFFFFFFFF);
+  static const primaryContainer = Color(0xFFD5E3C8); // pale sage
+  static const onPrimaryContainer = Color(0xFF24331F);
+  static const outline = Color(0xFF74806E); // control edges
+  static const outlineVariant = Color(0xFFC3D0B8); // dividers, the jar's rim
+  static const error = Color(0xFFB3261E);
+  static const onError = Color(0xFFFFFFFF);
+  static const proof = Color(0xFF3F5A3C); // the accent itself — see above
+  static const proofContainer = Color(0xFFF6E7A1); // starter at its peak
+  static const onProofContainer = Color(0xFF24331F); // the total
+  static const onProofContainerMuted = Color(0xFF4A5944); // the labels
+  static const warn = Color(0xFF7A5900);
+  static const starter = Color(0xFFF3DF8E);
+  static const starterDeep = Color(0xFFE0BF57);
+  static const bubble = Color(0xFFFFFBEA);
 }
 
 abstract final class _Dark {
-  static const surface = Color(0xFF101014);
-  static const surfaceContainer = Color(0xFF1C1C22);
-  static const surfaceContainerHigh = Color(0xFF2A2A32);
-  static const onSurface = Color(0xFFE5E1E9); // 14.7:1
-  static const onSurfaceVariant = Color(0xFFC7C5D0); // 11.1:1
-  static const primary = Color(0xFFB6C4FF); // 11.1:1
-  static const onPrimary = Color(0xFF17275C); // 8.3:1 on primary
-  static const primaryContainer = Color(0xFF33468F); // deep tonal blue
-  static const onPrimaryContainer = Color(0xFFDDE3FF); // 6.8:1
-  static const outline = Color(0xFF90909A); // 6.0:1 — control edges
-  static const outlineVariant = Color(0xFF46464F); // hairline dividers only
-  static const error = Color(0xFFFFB4AB); // 11.2:1
-  static const onError = Color(0xFF690005); // 7.7:1 on error
-  static const proof = Color(0xFFB6C4FF); // the accent itself — see below
-  static const proofContainer = Color(0xFF4A3800); // deep tonal amber
-  static const onProofContainer = Color(0xFFFFEFC2); // 9.9:1 — the total
-  static const onProofContainerMuted = Color(0xFFE6CE8F); // 7.3:1 — the labels
-  static const warn = Color(0xFFFFD24A); // 13.2:1
+  /// The page: deep forest. Panels are a step raised from it.
+  static const surface = Color(0xFF121812);
+  static const surfaceContainer = Color(0xFF1C241B);
+  static const surfaceContainerHigh = Color(0xFF263024);
+  static const onSurface = Color(0xFFE6EEDF); // 13.9:1
+  static const onSurfaceVariant = Color(0xFFA9B8A0); // 6.6:1 on the field fill
+  static const primary = Color(0xFFA8C99A); // light sage, 7.5:1
+  static const onPrimary = Color(0xFF142012);
+  static const primaryContainer = Color(0xFF34502F); // deep sage
+  static const onPrimaryContainer = Color(0xFFD5E8C8);
+  static const outline = Color(0xFF7E8C77); // control edges
+  static const outlineVariant = Color(0xFF3A4734); // dividers, the jar's rim
+  static const error = Color(0xFFFFB4AB);
+  static const onError = Color(0xFF690005);
+  static const proof = Color(0xFFA8C99A); // the accent itself — see above
+  static const proofContainer = Color(0xFF3B3418); // deep honey
+  static const onProofContainer = Color(0xFFF6E7A1); // the total
+  static const onProofContainerMuted = Color(0xFFD4C68C); // the labels
+  static const warn = Color(0xFFFFD24A);
+  static const starter = Color(0xFFE9CF6E); // glows against the dark glass
+  static const starterDeep = Color(0xFFB8962F);
+  static const bubble = Color(0xFFFFF3C4);
 }
 
 /// Colours with a baking meaning rather than a Material role. Reached through
@@ -92,6 +94,9 @@ class BakingColors extends ThemeExtension<BakingColors> {
     required this.onProofContainer,
     required this.onProofContainerMuted,
     required this.warn,
+    required this.starter,
+    required this.starterDeep,
+    required this.bubble,
   });
 
   /// Fermentation / "ready" indicators. Drawn on a surface, never on
@@ -112,6 +117,12 @@ class BakingColors extends ThemeExtension<BakingColors> {
   /// Advisory validation — distinct from `colorScheme.error`, which blocks.
   final Color warn;
 
+  /// The starter in the jar: its surface, the deeper colour it settles to at
+  /// the bottom, and its bubbles. Paint only — no text is drawn on them.
+  final Color starter;
+  final Color starterDeep;
+  final Color bubble;
+
   @override
   BakingColors copyWith({
     Color? proof,
@@ -119,12 +130,18 @@ class BakingColors extends ThemeExtension<BakingColors> {
     Color? onProofContainer,
     Color? onProofContainerMuted,
     Color? warn,
+    Color? starter,
+    Color? starterDeep,
+    Color? bubble,
   }) => BakingColors(
     proof: proof ?? this.proof,
     proofContainer: proofContainer ?? this.proofContainer,
     onProofContainer: onProofContainer ?? this.onProofContainer,
     onProofContainerMuted: onProofContainerMuted ?? this.onProofContainerMuted,
     warn: warn ?? this.warn,
+    starter: starter ?? this.starter,
+    starterDeep: starterDeep ?? this.starterDeep,
+    bubble: bubble ?? this.bubble,
   );
 
   @override
@@ -144,6 +161,9 @@ class BakingColors extends ThemeExtension<BakingColors> {
         t,
       )!,
       warn: Color.lerp(warn, other.warn, t)!,
+      starter: Color.lerp(starter, other.starter, t)!,
+      starterDeep: Color.lerp(starterDeep, other.starterDeep, t)!,
+      bubble: Color.lerp(bubble, other.bubble, t)!,
     );
   }
 }
@@ -152,35 +172,20 @@ class BakingColors extends ThemeExtension<BakingColors> {
 /// synthesise a bold; the variation selects the real designed weight.
 List<FontVariation> _wght(double weight) => [FontVariation('wght', weight)];
 
-/// Lining, fixed-width digits. Every gram and percentage uses this so columns
-/// of numbers line up instead of shimmering as values change.
-const tabularFigures = [FontFeature.tabularFigures()];
+/// The one face. Nunito is a rounded sans that suits the soft shapes, it is a
+/// variable font (200–1000), and its digits are all the same width by design —
+/// so columns of grams line up without a separate monospace face.
+const appFont = 'Nunito';
 
-/// The face every gram and percentage is set in. Never applied without
-/// [tabularFigures] — use [numeric] rather than reaching for either directly.
-const numericFont = 'IBMPlexMono';
-
-/// Headings and the big totals. Carries the display end of the scale, where
-/// Plex Sans has no cut heavy enough.
-const displayFont = 'PlusJakartaSans';
-
-/// Sets [style] as a measurement: monospaced *and* tabular, so it reads as a
-/// number off a scale rather than as prose. The two always travel together —
-/// this is the only place they are applied.
-///
-/// The weight is clamped into the four cuts `pubspec.yaml` registers for Plex
-/// Mono. Mono has no variable axis, so a heavier request would be synthesised
-/// into a fake bold; clamping here means the display scale stays free to go
-/// past 700 without every number that borrows one of its styles going smeary.
+/// Sets [style] as a measurement. With one face that already has fixed-width
+/// digits this only pins the weight variation, but every gram and percentage
+/// still goes through here, so a future figures face has one place to land.
 TextStyle numeric(TextStyle? style) {
   final base = style ?? const TextStyle();
-  final value = (base.fontWeight ?? FontWeight.w400).value.clamp(400, 700);
-  final weight = FontWeight.values[(value ~/ 100) - 1];
+  final weight = (base.fontWeight ?? FontWeight.w400).value;
   return base.copyWith(
-    fontFamily: numericFont,
-    fontFeatures: tabularFigures,
-    fontWeight: weight,
-    fontVariations: _wght(value.toDouble()),
+    fontFamily: appFont,
+    fontVariations: _wght(weight.toDouble()),
   );
 }
 
@@ -225,7 +230,7 @@ ThemeData buildTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: colorScheme.surface,
-    fontFamily: 'IBMPlexSans',
+    fontFamily: appFont,
     textTheme: textTheme,
     splashFactory: InkSparkle.splashFactory,
     extensions: [
@@ -239,6 +244,9 @@ ThemeData buildTheme(Brightness brightness) {
             ? _Dark.onProofContainerMuted
             : _Light.onProofContainerMuted,
         warn: isDark ? _Dark.warn : _Light.warn,
+        starter: isDark ? _Dark.starter : _Light.starter,
+        starterDeep: isDark ? _Dark.starterDeep : _Light.starterDeep,
+        bubble: isDark ? _Dark.bubble : _Light.bubble,
       ),
     ],
 
@@ -445,7 +453,10 @@ TextTheme _textTheme(ColorScheme colors) {
     double letterSpacing = 0,
     String? family,
   }) => TextStyle(
-    fontFamily: family,
+    // Named on every style, not left to ThemeData.fontFamily: the button
+    // themes below take these styles before ThemeData applies its family, and
+    // would otherwise fall back to the platform font.
+    fontFamily: family ?? appFont,
     fontSize: size,
     height: height,
     fontWeight: FontWeight.values[(weight ~/ 100) - 1],
@@ -454,33 +465,34 @@ TextTheme _textTheme(ColorScheme colors) {
     color: color ?? colors.onSurface,
   );
 
-  // The display face, set at the weights a soft layout can carry. Headings are
-  // told apart from body by size and colour, not by shouting.
+  // Nunito's rounded heavy cuts carry the display end; headings are told apart
+  // from body by size and weight, never by shouting.
   TextStyle display(double size, double weight, {double? height}) => style(
     size,
     weight,
     height: height,
     letterSpacing: -size * 0.02,
-    family: displayFont,
+    family: appFont,
   );
 
   return TextTheme(
-    displaySmall: display(40, 700, height: 1.1),
-    headlineMedium: display(30, 700, height: 1.15),
-    headlineSmall: display(24, 700, height: 1.2),
-    titleLarge: display(20, 600, height: 1.25),
-    titleMedium: display(17, 600, height: 1.3),
-    titleSmall: style(15, 600, height: 1.4),
+    displayMedium: display(48, 800, height: 1.05),
+    displaySmall: display(40, 800, height: 1.1),
+    headlineMedium: display(30, 800, height: 1.15),
+    headlineSmall: display(24, 800, height: 1.2),
+    titleLarge: display(20, 700, height: 1.25),
+    titleMedium: display(17, 700, height: 1.3),
+    titleSmall: style(15, 700, height: 1.4),
     bodyLarge: style(16, 400, height: 1.5),
     bodyMedium: style(14, 400, height: 1.5, color: colors.onSurfaceVariant),
     bodySmall: style(13, 400, height: 1.45, color: colors.onSurfaceVariant),
     // Section headings and field labels. Sentence case, so the tracking goes
     // back to the small positive values that sit well under 16 px.
-    labelLarge: style(15, 600, height: 1.2, letterSpacing: 0.1),
-    labelMedium: style(13, 600, height: 1.2, letterSpacing: 0.1),
+    labelLarge: style(15, 700, height: 1.2, letterSpacing: 0.1),
+    labelMedium: style(13, 700, height: 1.2, letterSpacing: 0.1),
     labelSmall: style(
       12,
-      500,
+      600,
       height: 1.2,
       letterSpacing: 0.2,
       color: colors.onSurfaceVariant,
