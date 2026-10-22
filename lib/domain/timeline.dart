@@ -49,6 +49,12 @@ class BakeStep {
     _ => false,
   };
 
+  /// The dough is rising: bulk, the folds within it, and the final proof.
+  bool get ferments => switch (kind) {
+    StepKind.bulk || StepKind.fold || StepKind.proof => true,
+    _ => false,
+  };
+
   BakeStep withDuration(Duration duration) =>
       BakeStep(kind: kind, title: title, duration: duration, detail: detail);
 }

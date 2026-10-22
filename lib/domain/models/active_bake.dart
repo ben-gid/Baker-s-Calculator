@@ -36,7 +36,7 @@ class ActiveBake {
     var total = Duration.zero;
     var elapsed = Duration.zero;
     for (final s in steps) {
-      if (!_ferments.contains(s.step.kind)) continue;
+      if (!s.step.ferments) continue;
       final length = s.endsAt.difference(s.startsAt);
       total += length;
       if (!now.isAfter(s.startsAt)) continue;
@@ -56,7 +56,6 @@ class ActiveBake {
 
   static const restLevel = 0.35;
   static const peakLevel = 0.85;
-  static const _ferments = {StepKind.bulk, StepKind.fold, StepKind.proof};
 
   ScheduledStep? stepAfter(ScheduledStep step) {
     final index = steps.indexOf(step);

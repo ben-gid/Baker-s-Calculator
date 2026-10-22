@@ -8,6 +8,15 @@ import '../../core/theme/app_theme.dart';
 /// Shared by Home's jar and the calculator's, so the one flies into the other.
 const jarHeroTag = 'starter-jar';
 
+/// A saved recipe's jar, shared by its shelf card, its library row, its page
+/// and its plan, so the jar travels with the recipe from screen to screen.
+String recipeJarTag(String id) => 'recipe-jar-$id';
+
+/// How full a jar draws for a dough of this [hydration]: a 72% dough is about
+/// three-quarters full. An unknown hydration draws a low, waiting jar.
+double jarLevelFor(double? hydration) =>
+    ((hydration ?? 30) / 100).clamp(0.15, 0.95);
+
 /// The jar — the app's one living visual. A fragment shader
 /// (`shaders/starter_jar.frag`) draws the glass, the starter's moving surface
 /// and its bubbles; this widget eases the level and dome to new values and

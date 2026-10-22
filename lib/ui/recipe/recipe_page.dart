@@ -5,16 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/formatting.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../data/recipe_share.dart';
+import '../../domain/calculator.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/recipe_table.dart';
 import '../widgets/action_bar.dart';
+import '../widgets/motion.dart';
 import '../widgets/panel.dart';
+import '../widgets/starter_jar.dart';
 
+/// One recipe. Its jar has travelled here from the card that was tapped and sits
+/// in the header beside the name; the recipe itself reads below, and "Plan this
+/// bake" carries the jar on to the plan.
 class RecipePage extends ConsumerWidget {
   const RecipePage({super.key, required this.id});
 
@@ -49,8 +57,8 @@ class RecipePage extends ConsumerWidget {
     final blocked = validate(recipe.input).hasErrors;
 
     return Scaffold(
+      // The name is the header's, below — the bar only carries the actions.
       appBar: AppBar(
-        title: Text(recipe.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.calculate_outlined),
@@ -82,6 +90,14 @@ class RecipePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              RiseIn(
+                child: _Header(
+                  recipe: recipe,
+                  unit: settings.unit,
+                  blocked: blocked,
+                ),
+              ),
+              const SizedBox(height: Insets.xl),
               if (recipe.isSystem)
                 Padding(
                   padding: const EdgeInsets.only(bottom: Insets.lg),
@@ -124,6 +140,58 @@ class RecipePage extends ConsumerWidget {
         text: '$text\nOpen in Baker\'s Calculator: $link',
         subject: recipe.name,
       ),
+    );
+  }
+}
+
+/// The recipe's jar at its hydration, beside its name and the three facts a
+/// baker scans for: style, hydration and weight.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.recipe,
+    required this.unit,
+    required this.blocked,
+  });
+
+  final SavedRecipe recipe;
+  final MassUnit unit;
+  final bool blocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final result = blocked ? null : calculate(recipe.input);
+    final facts = [
+      recipe.input.style.label,
+      if (result != null) ...[
+        '${formatPercent(result.hydration)} hydration',
+        formatMass(result.totalWeight, unit),
+      ],
+      if (recipe.input.loaves > 1) '${recipe.input.loaves} loaves',
+    ].join(' · ');
+
+    return Row(
+      children: [
+        Hero(
+          tag: recipeJarTag(recipe.id),
+          child: SizedBox(
+            width: 76,
+            height: 98,
+            child: StarterJar(level: jarLevelFor(result?.hydration), fizz: 0.5),
+          ),
+        ),
+        const SizedBox(width: Insets.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(recipe.name, style: theme.textTheme.headlineSmall),
+              const SizedBox(height: Insets.xs),
+              Text(facts, style: numeric(theme.textTheme.bodyMedium)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

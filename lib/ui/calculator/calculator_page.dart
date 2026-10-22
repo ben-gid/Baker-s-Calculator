@@ -308,7 +308,7 @@ class _Header extends StatelessWidget {
             width: 76,
             height: 98,
             child: StarterJar(
-              level: ((hydration ?? 15) / 100).clamp(0.12, 0.95),
+              level: jarLevelFor(hydration),
               fizz: input.style == DoughStyle.classic ? 0.35 : 0.7,
             ),
           ),

@@ -187,7 +187,7 @@ class _JarHeroState extends State<_JarHero> {
       caption = _BakeCaption(bake: bake, now: now);
     } else if (dough != null) {
       jar = (
-        level: (dough.hydration / 100).clamp(0.15, 0.95),
+        level: jarLevelFor(dough.hydration),
         dome: 0,
         fizz: 0.5,
         label: 'Your dough, ${formatPercent(dough.hydration)} hydration',
@@ -459,13 +459,16 @@ class _RecipeCard extends StatelessWidget {
       onTap: () => context.push('/recipe/${recipe.id}'),
       children: [
         // A little still jar at this recipe's hydration.
-        SizedBox(
-          width: 30,
-          height: 38,
-          child: StarterJar(
-            level: ((result?.hydration ?? 30) / 100).clamp(0.15, 0.95),
-            fizz: 0.3,
-            animate: false,
+        Hero(
+          tag: recipeJarTag(recipe.id),
+          child: SizedBox(
+            width: 30,
+            height: 38,
+            child: StarterJar(
+              level: jarLevelFor(result?.hydration),
+              fizz: 0.3,
+              animate: false,
+            ),
           ),
         ),
         const Spacer(),

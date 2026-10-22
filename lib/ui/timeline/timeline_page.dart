@@ -12,9 +12,15 @@ import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/action_bar.dart';
 import '../widgets/dough_temp_card.dart';
+import '../widgets/motion.dart';
 import '../widgets/panel.dart';
+import '../widgets/starter_jar.dart';
 
 /// A bake plan: every step laid end to end from a start time, with reminders.
+///
+/// The recipe's jar flies in and rises to its peak — where this plan takes the
+/// dough — beside the two times. Down the timeline, the steps where the dough
+/// is rising run in the starter's colour.
 ///
 /// The start time is the only thing most bakers touch — pick "out of the oven
 /// by 8am" and the whole plan slides. Individual durations are editable because
@@ -73,6 +79,7 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
           padding: pagePadding(context),
           children: [
             _StartCard(
+              recipeId: recipe.id,
               start: _start,
               finish: steps.last.endsAt,
               total: timeline.total,
@@ -137,6 +144,7 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
 
 class _StartCard extends StatelessWidget {
   const _StartCard({
+    required this.recipeId,
     required this.start,
     required this.finish,
     required this.total,
@@ -144,6 +152,7 @@ class _StartCard extends StatelessWidget {
     required this.onFinishChanged,
   });
 
+  final String recipeId;
   final DateTime start;
   final DateTime finish;
   final Duration total;
@@ -153,23 +162,50 @@ class _StartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Panel(
-      title: 'Timing',
-      note: 'Total ${formatDuration(total)} from first mix to out of the oven.',
-      children: [
-        _TimeRow(label: 'Start', value: start, onChanged: onStartChanged),
-        const Divider(height: Insets.xl),
-        _TimeRow(
-          label: 'Out of the oven',
-          value: finish,
-          onChanged: onFinishChanged,
-        ),
-        const SizedBox(height: Insets.sm),
-        Text(
-          'Set either one — the other follows.',
-          style: theme.textTheme.bodySmall,
-        ),
-      ],
+    return RiseIn(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Hero(
+            tag: recipeJarTag(recipeId),
+            child: const SizedBox(
+              width: 76,
+              height: 98,
+              child: StarterJar(
+                level: ActiveBake.peakLevel,
+                dome: 1,
+                fizz: 0.9,
+              ),
+            ),
+          ),
+          const SizedBox(width: Insets.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionLabel('Timing'),
+                const SizedBox(height: Insets.xs),
+                _TimeRow(
+                  label: 'Start',
+                  value: start,
+                  onChanged: onStartChanged,
+                ),
+                _TimeRow(
+                  label: 'Out of the oven',
+                  value: finish,
+                  onChanged: onFinishChanged,
+                ),
+                const SizedBox(height: Insets.xs),
+                Text(
+                  '${formatDuration(total)} in all. Set either time — the '
+                  'other follows.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -212,18 +248,26 @@ class _TimeRow extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: () => _pick(context),
+      borderRadius: BorderRadius.circular(Radii.field),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Insets.sm),
+        padding: const EdgeInsets.symmetric(vertical: Insets.xs),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
-            Text(
-              '${_dayLabel(value)} ${formatClock(value)}',
-              style: numeric(theme.textTheme.titleMedium),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: theme.textTheme.labelSmall),
+                  Text(
+                    '${_dayLabel(value)} ${formatClock(value)}',
+                    style: numeric(theme.textTheme.titleMedium),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: Insets.sm),
             Icon(
               Icons.edit_calendar_outlined,
+              size: 20,
               color: theme.colorScheme.primary,
             ),
           ],
@@ -286,13 +330,16 @@ class _StepTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final baking = theme.extension<BakingColors>()!;
+    final colors = theme.colorScheme;
     final step = scheduled.step;
+    final rising = step.ferments;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // A spine down the left so the steps read as one continuous plan.
+          // Where the dough is rising it runs thicker, in the starter's colour.
           SizedBox(
             width: 64,
             child: Column(
@@ -301,13 +348,30 @@ class _StepTile extends StatelessWidget {
                   formatClock(scheduled.startsAt),
                   style: numeric(theme.textTheme.labelMedium),
                 ),
+                const SizedBox(height: Insets.xs),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: rising ? baking.starter : colors.outlineVariant,
+                    border: rising
+                        ? Border.all(color: baking.starterDeep, width: 2)
+                        : null,
+                  ),
+                ),
                 Expanded(
                   child: Container(
-                    width: 2,
+                    width: rising ? 4 : 2,
                     margin: const EdgeInsets.symmetric(vertical: Insets.xs),
-                    color: isLast
-                        ? Colors.transparent
-                        : theme.colorScheme.outlineVariant,
+                    decoration: BoxDecoration(
+                      color: isLast
+                          ? Colors.transparent
+                          : rising
+                          ? baking.starterDeep
+                          : colors.outlineVariant,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
                   ),
                 ),
               ],

@@ -11,6 +11,7 @@ import '../../domain/validation.dart';
 import '../../state/providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/panel.dart';
+import '../widgets/starter_jar.dart';
 
 class LibraryPage extends ConsumerWidget {
   const LibraryPage({super.key});
@@ -167,9 +168,10 @@ class _RecipeTile extends ConsumerWidget {
 
     // A recipe that fails validation can still be listed — it just cannot show
     // a weight. That is better than hiding it and losing the baker's work.
-    final weight = validate(recipe.input).hasErrors
+    final result = validate(recipe.input).hasErrors
         ? null
-        : calculate(recipe.input).totalWeight;
+        : calculate(recipe.input);
+    final weight = result?.totalWeight;
 
     final subtitle = [
       recipe.input.style.label,
@@ -184,11 +186,18 @@ class _RecipeTile extends ConsumerWidget {
       child: ListTile(
         title: Text(recipe.name, style: theme.textTheme.titleSmall),
         subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
-        leading: Icon(
-          recipe.isSystem
-              ? Icons.auto_stories_outlined
-              : Icons.bookmark_outline,
-          color: theme.colorScheme.onSurfaceVariant,
+        // Its jar, which travels on to the recipe's page.
+        leading: Hero(
+          tag: recipeJarTag(recipe.id),
+          child: SizedBox(
+            width: 30,
+            height: 38,
+            child: StarterJar(
+              level: jarLevelFor(result?.hydration),
+              fizz: 0.3,
+              animate: false,
+            ),
+          ),
         ),
         trailing: recipe.isSystem
             ? null
