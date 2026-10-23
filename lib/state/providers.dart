@@ -61,6 +61,8 @@ class SettingsController extends Notifier<Settings> {
   void setThemeMode(ThemeMode mode) => _update(state.copyWith(themeMode: mode));
   void toggleBakersPercent() =>
       _update(state.copyWith(showBakersPercent: !state.showBakersPercent));
+  void toggle24HourClock() =>
+      _update(state.copyWith(use24HourClock: !state.use24HourClock));
 }
 
 final settingsProvider = NotifierProvider<SettingsController, Settings>(

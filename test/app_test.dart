@@ -678,6 +678,7 @@ void main() {
 
     expect(find.textContaining('still here to follow'), findsOneWidget);
     // The plan is untouched.
+    await tester.scrollUntilVisible(find.text('Autolyse'), 200);
     expect(find.text('Autolyse'), findsOneWidget);
   });
 

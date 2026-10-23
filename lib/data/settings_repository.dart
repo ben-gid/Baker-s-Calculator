@@ -14,20 +14,24 @@ class Settings {
     this.unit = MassUnit.grams,
     this.themeMode = ThemeMode.system,
     this.showBakersPercent = true,
+    this.use24HourClock = false,
   });
 
   final MassUnit unit;
   final ThemeMode themeMode;
   final bool showBakersPercent;
+  final bool use24HourClock;
 
   Settings copyWith({
     MassUnit? unit,
     ThemeMode? themeMode,
     bool? showBakersPercent,
+    bool? use24HourClock,
   }) => Settings(
     unit: unit ?? this.unit,
     themeMode: themeMode ?? this.themeMode,
     showBakersPercent: showBakersPercent ?? this.showBakersPercent,
+    use24HourClock: use24HourClock ?? this.use24HourClock,
   );
 }
 
@@ -67,6 +71,7 @@ class SettingsRepository {
   static const _unitKey = 'unit';
   static const _themeKey = 'themeMode';
   static const _percentKey = 'showBakersPercent';
+  static const _clockKey = 'use24HourClock';
   static const _bakeKey = 'activeBake';
   static const _tempKey = 'doughTemp';
 
@@ -76,12 +81,14 @@ class SettingsRepository {
         ThemeMode.values.asNameMap()[_prefs.getString(_themeKey)] ??
         ThemeMode.system,
     showBakersPercent: _prefs.getBool(_percentKey) ?? true,
+    use24HourClock: _prefs.getBool(_clockKey) ?? false,
   );
 
   Future<void> write(Settings settings) async {
     await _prefs.setString(_unitKey, settings.unit.name);
     await _prefs.setString(_themeKey, settings.themeMode.name);
     await _prefs.setBool(_percentKey, settings.showBakersPercent);
+    await _prefs.setBool(_clockKey, settings.use24HourClock);
   }
 
   DoughTemps readDoughTemps() {

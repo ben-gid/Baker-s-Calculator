@@ -78,10 +78,13 @@ String formatDuration(Duration duration) {
   return '$hours h $minutes m';
 }
 
-/// `09:30` in 24-hour form — unambiguous on a timeline read at 2am.
-String formatClock(DateTime time) =>
-    '${time.hour.toString().padLeft(2, '0')}:'
-    '${time.minute.toString().padLeft(2, '0')}';
+/// `9:30 a.m.` by default, or `09:30` when the baker picks the 24-hour clock.
+String formatClock(DateTime time, {bool use24Hour = false}) {
+  final minutes = time.minute.toString().padLeft(2, '0');
+  if (use24Hour) return '${time.hour.toString().padLeft(2, '0')}:$minutes';
+  final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
+  return '$hour:$minutes ${time.hour < 12 ? 'a.m.' : 'p.m.'}';
+}
 
 /// Parses a number the way a person types it, tolerating a comma decimal
 /// separator and surrounding spaces. Returns null if it isn't a number.

@@ -256,6 +256,7 @@ class _BakeCaptionState extends ConsumerState<_BakeCaption> {
 
   @override
   Widget build(BuildContext context) {
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final theme = Theme.of(context);
     final bake = widget.bake;
     final now = widget.now;
@@ -269,7 +270,7 @@ class _BakeCaptionState extends ConsumerState<_BakeCaption> {
       headline = 'Done — out of the oven';
     } else if (step.startsAt.isAfter(now)) {
       headline =
-          'Starts ${formatClock(step.startsAt)} with '
+          'Starts ${formatClock(step.startsAt, use24Hour: clock24)} with '
           '${step.step.title.toLowerCase()}';
     } else {
       headline =
@@ -338,7 +339,7 @@ class _BakeCaptionState extends ConsumerState<_BakeCaption> {
         if (next != null && !_open) ...[
           const SizedBox(height: Insets.xs),
           Text(
-            'Then ${next.step.title.toLowerCase()} at ${formatClock(next.startsAt)}',
+            'Then ${next.step.title.toLowerCase()} at ${formatClock(next.startsAt, use24Hour: clock24)}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),

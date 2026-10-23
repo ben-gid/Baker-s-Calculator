@@ -42,6 +42,13 @@ class SettingsPage extends ConsumerWidget {
                   value: settings.showBakersPercent,
                   onChanged: (_) => controller.toggleBakersPercent(),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('24-hour clock'),
+                  subtitle: const Text('Bake times as 14:30, not 2:30 p.m.'),
+                  value: settings.use24HourClock,
+                  onChanged: (_) => controller.toggle24HourClock(),
+                ),
               ],
             ),
             const SizedBox(height: Insets.md),

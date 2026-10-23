@@ -20,6 +20,9 @@ class _AppState extends ConsumerState<BakersCalculatorApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final use24Hour = ref.watch(
+      settingsProvider.select((s) => s.use24HourClock),
+    );
 
     return MaterialApp.router(
       title: "Baker's Calculator",
@@ -28,6 +31,12 @@ class _AppState extends ConsumerState<BakersCalculatorApp> {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       themeMode: themeMode,
+      // The clock setting rides on MediaQuery, so the time pickers follow it
+      // and every `formatClock` reads it from the context it is drawn in.
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: use24Hour),
+        child: child!,
+      ),
     );
   }
 }

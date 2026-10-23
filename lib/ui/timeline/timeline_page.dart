@@ -358,6 +358,7 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
   Future<void> _startBake(ActiveBake bake) async {
     setState(() => _scheduling = true);
     final messenger = ScaffoldMessenger.of(context);
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final ScheduleOutcome outcome = await ref
         .read(activeBakeProvider.notifier)
         .start(bake);
@@ -373,7 +374,7 @@ class _TimelinePageState extends ConsumerState<TimelinePage> {
       SnackBar(
         content: Text(switch (outcome) {
           ScheduleOutcome.scheduled =>
-            'Reminders set. First one at ${formatClock(first.endsAt)}.',
+            'Reminders set. First one at ${formatClock(first.endsAt, use24Hour: clock24)}.',
           ScheduleOutcome.permissionDenied =>
             'No notification permission — the plan is still here to follow.',
           ScheduleOutcome.unsupported =>
@@ -417,6 +418,7 @@ class _LiveHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final theme = Theme.of(context);
     final rise = bake.riseAt(now);
     return Row(
@@ -442,7 +444,7 @@ class _LiveHeader extends StatelessWidget {
               const SizedBox(height: Insets.xs),
               Text(
                 'Out of the oven ${_dayLabel(bake.schedule.last.endsAt)} '
-                '${formatClock(bake.schedule.last.endsAt)}',
+                '${formatClock(bake.schedule.last.endsAt, use24Hour: clock24)}',
                 style: numeric(theme.textTheme.titleMedium),
               ),
               const SizedBox(height: Insets.xs),
@@ -563,6 +565,7 @@ class _TimeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final theme = Theme.of(context);
     return InkWell(
       onTap: () => _pick(context),
@@ -577,7 +580,7 @@ class _TimeRow extends StatelessWidget {
                 children: [
                   Text(label, style: theme.textTheme.labelSmall),
                   Text(
-                    '${_dayLabel(value)} ${formatClock(value)}',
+                    '${_dayLabel(value)} ${formatClock(value, use24Hour: clock24)}',
                     style: numeric(theme.textTheme.titleMedium),
                   ),
                 ],
@@ -634,6 +637,7 @@ class _Spine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final theme = Theme.of(context);
     final baking = theme.extension<BakingColors>()!;
     final colors = theme.colorScheme;
@@ -652,7 +656,7 @@ class _Spine extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                formatClock(scheduled.startsAt),
+                formatClock(scheduled.startsAt, use24Hour: clock24),
                 style: numeric(theme.textTheme.labelMedium),
               ),
               const SizedBox(height: Insets.xs),

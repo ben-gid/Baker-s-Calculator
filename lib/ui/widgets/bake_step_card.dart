@@ -29,6 +29,7 @@ class BakeStepCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final clock24 = MediaQuery.alwaysUse24HourFormatOf(context);
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final controller = ref.read(activeBakeProvider.notifier);
@@ -56,7 +57,7 @@ class BakeStepCard extends ConsumerWidget {
 
     final String when;
     if (scheduled.startsAt.isAfter(now)) {
-      when = 'Starts ${formatClock(scheduled.startsAt)}';
+      when = 'Starts ${formatClock(scheduled.startsAt, use24Hour: clock24)}';
     } else {
       when = '${formatDuration(scheduled.endsAt.difference(now))} left';
     }
