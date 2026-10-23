@@ -385,18 +385,6 @@ ThemeData buildTheme(Brightness brightness) {
       strokeCap: StrokeCap.round,
     ),
 
-    datePickerTheme: DatePickerThemeData(
-      backgroundColor: colorScheme.surfaceContainer,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      shape: _rounded(Radii.card + 8),
-    ),
-    timePickerTheme: TimePickerThemeData(
-      backgroundColor: colorScheme.surfaceContainer,
-      elevation: 0,
-      shape: _rounded(Radii.card + 8),
-    ),
-
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)

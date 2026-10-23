@@ -16,6 +16,7 @@ class LoafStepper extends StatelessWidget {
     this.max,
     this.fewer = 'One fewer loaf',
     this.more = 'One more loaf',
+    this.step = 1,
   });
 
   final int loaves;
@@ -27,6 +28,10 @@ class LoafStepper extends StatelessWidget {
   final int? max;
   final String fewer;
   final String more;
+
+  /// A step's minutes move in fives. A count off that grid snaps onto it, so
+  /// 12 goes to 10 or 15 rather than 7 or 17.
+  final int step;
 
   void _set(int next) {
     HapticFeedback.selectionClick();
@@ -44,7 +49,9 @@ class LoafStepper extends StatelessWidget {
         IconButton.outlined(
           icon: const Icon(Icons.remove),
           tooltip: fewer,
-          onPressed: loaves <= min ? null : () => _set(loaves - 1),
+          onPressed: loaves <= min
+              ? null
+              : () => _set(((loaves - 1) ~/ step) * step),
         ),
         SizedBox(
           width: 40,
@@ -59,7 +66,7 @@ class LoafStepper extends StatelessWidget {
           tooltip: more,
           onPressed: max != null && loaves >= max!
               ? null
-              : () => _set(loaves + 1),
+              : () => _set((loaves ~/ step + 1) * step),
         ),
       ],
     );

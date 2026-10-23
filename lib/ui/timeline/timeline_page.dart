@@ -20,6 +20,7 @@ import '../widgets/loaf_stepper.dart';
 import '../widgets/motion.dart';
 import '../widgets/panel.dart';
 import '../widgets/starter_jar.dart';
+import 'time_sheets.dart';
 
 /// A bake plan: every step laid end to end from a start time, with the grams
 /// that go in at each one and reminders for the waiting.
@@ -390,22 +391,12 @@ Future<void> _editDuration(
   BakeStep step,
   ValueChanged<Duration> onChanged,
 ) async {
-  final picked = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay(
-      hour: step.duration.inHours.clamp(0, 23),
-      minute: step.duration.inMinutes.remainder(60),
-    ),
-    helpText: 'How long for ${step.title.toLowerCase()}?',
-    builder: (context, child) => MediaQuery(
-      // A duration is hours and minutes, never am/pm.
-      data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-      child: child!,
-    ),
+  final picked = await showDurationSheet(
+    context,
+    title: 'How long for ${step.title.toLowerCase()}?',
+    initial: step.duration,
   );
-  if (picked == null) return;
-  final duration = Duration(hours: picked.hour, minutes: picked.minute);
-  if (duration > Duration.zero) onChanged(duration);
+  if (picked != null) onChanged(picked);
 }
 
 /// The live plan's header: the jar at the height the dough has reached, and
@@ -542,25 +533,12 @@ class _TimeRow extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
 
   Future<void> _pick(BuildContext context) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: value,
-      firstDate: value.subtract(const Duration(days: 7)),
-      lastDate: value.add(const Duration(days: 30)),
-      helpText: 'Pick the day',
+    final picked = await showDateTimeSheet(
+      context,
+      title: label,
+      initial: value,
     );
-    if (date == null || !context.mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(value),
-      helpText: 'Pick the time',
-    );
-    if (time == null) return;
-
-    onChanged(
-      DateTime(date.year, date.month, date.day, time.hour, time.minute),
-    );
+    if (picked != null) onChanged(picked);
   }
 
   @override

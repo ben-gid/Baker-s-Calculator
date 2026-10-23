@@ -77,8 +77,12 @@ class RollingText extends StatelessWidget {
       duration: still ? Duration.zero : const Duration(milliseconds: 260),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
+      // The Stack sizes each Text to its own width, so textAlign alone can
+      // place nothing: the Stack has to.
       layoutBuilder: (current, previous) => Stack(
-        alignment: Alignment.centerLeft,
+        alignment: textAlign == TextAlign.center
+            ? Alignment.center
+            : Alignment.centerLeft,
         children: [...previous, ?current],
       ),
       transitionBuilder: (child, animation) {

@@ -23,6 +23,7 @@ import 'package:bakers_calculator/state/providers.dart';
 import 'package:bakers_calculator/ui/widgets/action_bar.dart';
 import 'package:bakers_calculator/ui/widgets/number_field.dart';
 import 'package:bakers_calculator/ui/widgets/starter_jar.dart';
+import 'package:flutter/cupertino.dart' show CupertinoDatePicker;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -695,6 +696,36 @@ void main() {
   /// The card of the plan's step with this title.
   Finder stepCard(String title) =>
       find.ancestor(of: find.text(title), matching: find.byType(Card));
+
+  testWidgets('a step can run past a day', (tester) async {
+    await openPlan(tester);
+    await tester.scrollUntilVisible(find.text('Cold proof'), 200);
+    await tapVisible(tester, find.text('Cold proof'));
+
+    expect(find.text('How long for cold proof?'), findsOneWidget);
+    for (var i = 0; i < 14; i++) {
+      await tester.tap(find.byTooltip('One hour more'));
+      await tester.pump();
+    }
+    await tester.tap(sheetButton('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: stepCard('Cold proof'), matching: find.text('26 h')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the start is picked on one wheel', (tester) async {
+    await openPlan(tester);
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CupertinoDatePicker), findsOneWidget);
+    await tester.tap(sheetButton('Save'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CupertinoDatePicker), findsNothing);
+  });
 
   testWidgets('leaving out the autolyse moves its flour and water to the mix', (
     tester,
