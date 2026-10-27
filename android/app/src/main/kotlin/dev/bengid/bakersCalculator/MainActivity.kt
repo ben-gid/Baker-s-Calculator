@@ -1,4 +1,4 @@
-package com.example.dough_calculator
+package dev.bengid.bakersCalculator
 
 import io.flutter.embedding.android.FlutterActivity
 

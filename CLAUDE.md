@@ -396,8 +396,9 @@ iOS `Info.plist`.
 - Notification permission is requested at "Start bake", never at launch, and a
   refusal must leave the plan on screen and everything else working.
 
-## Not yet done
+## Release
 
-Application ID is still `com.example.dough_calculator` in
-`android/app/build.gradle.kts`; it is permanent after the first upload, so it
-was left rather than guessed. Same for the iOS bundle identifier.
+The application ID is `dev.bengid.bakersCalculator` everywhere and is
+permanent after the first Play upload — never change it. Release signing reads
+`android/key.properties` (git-ignored, format in the README) and falls back to
+the debug key when it is missing, so `flutter run --release` keeps working.

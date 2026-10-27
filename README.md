@@ -59,14 +59,19 @@ produced is still asserted, apart from two deliberate corrections documented in
 
 ## Before publishing
 
-The application ID still needs setting. It is permanent once a build is
-uploaded, so it has deliberately been left at the Flutter default rather than
-guessed:
+The application ID is `dev.bengid.bakersCalculator` (Android, iOS, macOS,
+Linux). It is permanent once a build is uploaded.
 
-- `android/app/build.gradle.kts` — `namespace` and `applicationId`, currently
-  `com.example.dough_calculator`.
-- Xcode — `PRODUCT_BUNDLE_IDENTIFIER` for the iOS target.
+Release builds are signed from `android/key.properties`, which is git-ignored:
 
+```properties
+storePassword=...
+keyPassword=...
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks
+```
+
+Without it the release build falls back to the debug key, which Play rejects.
 Then `flutter build appbundle --release`.
 
 ## Licence
