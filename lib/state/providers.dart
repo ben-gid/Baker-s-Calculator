@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/formatting.dart';
+import '../data/home_screen_widget.dart';
 import '../data/notification_service.dart';
 import '../data/recipe_repository.dart';
 import '../data/settings_repository.dart';
@@ -31,6 +32,11 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
 /// Bake reminders. Overridden in tests so nothing touches the platform.
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
+);
+
+/// The home-screen widget. Does nothing off Android and iOS, tests included.
+final homeScreenWidgetProvider = Provider<HomeScreenWidget>(
+  (ref) => HomeScreenWidget(),
 );
 
 /// Built-in recipes, read from the asset bundle.
@@ -163,6 +169,7 @@ class ActiveBakeController extends Notifier<ActiveBake?> {
   Future<ScheduleOutcome> start(ActiveBake bake) async {
     state = bake;
     await ref.read(settingsRepositoryProvider).writeActiveBake(bake);
+    ref.read(homeScreenWidgetProvider).showBake(bake);
     return ref.read(notificationServiceProvider).scheduleBake(bake);
   }
 
@@ -193,6 +200,7 @@ class ActiveBakeController extends Notifier<ActiveBake?> {
       ref
           .read(notificationServiceProvider)
           .scheduleBake(next, askPermission: false);
+      ref.read(homeScreenWidgetProvider).showBake(next);
     }
   }
 
@@ -200,6 +208,7 @@ class ActiveBakeController extends Notifier<ActiveBake?> {
     state = null;
     await ref.read(settingsRepositoryProvider).writeActiveBake(null);
     await ref.read(notificationServiceProvider).cancelBake();
+    await ref.read(homeScreenWidgetProvider).showBake(null);
   }
 }
 

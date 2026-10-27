@@ -3,4 +3,12 @@
     <color name="ic_launcher_background">#C8E6FF</color>
     <!-- LightPalette.surface — the window behind the splash and behind Flutter -->
     <color name="launch_background">#FAFAFA</color>
+    <!-- The home-screen widget, from LightPalette -->
+    <color name="widget_surface">#FFEEF2E8</color>
+    <color name="widget_on_surface">#FF24331F</color>
+    <color name="widget_muted">#FF55664F</color>
+    <color name="widget_primary">#FF3F5A3C</color>
+    <color name="widget_on_primary">#FFFFFFFF</color>
+    <color name="widget_secondary">#FFD5E3C8</color>
+    <color name="widget_on_secondary">#FF24331F</color>
 </resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bake_widget_label">Bake</string>
+    <string name="bake_widget_description">The step your bake is on, or a pinned recipe</string>
+</resources>

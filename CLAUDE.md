@@ -212,6 +212,27 @@ arrives, which is why `main()` calls `initialise()` at launch — that asks for
 nothing. The manifest's `ActionBroadcastReceiver` and `AppDelegate`'s
 `setPluginRegistrantCallback` are what make the buttons work at all.
 
+### The home-screen widget
+
+`HomeScreenWidget` (`data/home_screen_widget.dart`, on `home_widget`) shows the
+step a bake is on with Done / 15 more min, or the recipe pinned from its page's
+menu ("Pin to widget") when no bake runs. Dart hands over the whole forecast
+(`bakeSnapshot` in `domain/widget_snapshot.dart`), and each platform picks the
+first step whose end is still ahead — the `currentAt` rule, held by its test.
+Android redraws at each step's end via `scheduleWidgetUpdates`; iOS lays the
+same times out as timeline entries. `ActiveBakeController` pushes every change.
+
+The buttons are `bakerscalc://widget/press?action=…&step=…` links that reach
+`onWidgetAction` and take the same path as a reminder's buttons
+(`_pressedOutsideApp`). Taps are `bakerscalc://widget/<route>`, routed by
+Flutter's deep linking. Android: `BakeWidgetProvider.kt` (RemoteViews) and
+three receivers in the manifest; "Add widget" uses `requestPinWidget`, which
+iOS has no equivalent for. iOS: the `BakeWidget` extension (iOS 17+, for
+interactive buttons) shares `group.dev.bengid.bakersCalculator` with Runner,
+and `Runner/BakeIntent.swift` is compiled into **both** targets — only the
+app's copy calls Dart (`WIDGET_EXTENSION` is defined in the extension), and
+`ForegroundContinuableIntent` is what makes iOS run it in the app's process.
+
 ### Theme
 
 The look is **Starter Jar**: soft and organic, with fermentation as the hero —

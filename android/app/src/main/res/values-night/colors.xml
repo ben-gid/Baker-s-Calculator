@@ -2,4 +2,12 @@
 <resources>
     <!-- DarkPalette.surface -->
     <color name="launch_background">#09090B</color>
+    <!-- The home-screen widget, from DarkPalette -->
+    <color name="widget_surface">#FF1C241B</color>
+    <color name="widget_on_surface">#FFE6EEDF</color>
+    <color name="widget_muted">#FFA9B8A0</color>
+    <color name="widget_primary">#FFA8C99A</color>
+    <color name="widget_on_primary">#FF142012</color>
+    <color name="widget_secondary">#FF34502F</color>
+    <color name="widget_on_secondary">#FFD5E8C8</color>
 </resources>

@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/spacing.dart';
 import '../../data/recipe_share.dart';
 import '../../domain/calculator.dart';
+import '../../domain/models/recipe.dart';
 import '../../domain/models/recipe_input.dart';
 import '../../domain/models/saved_recipe.dart';
 import '../../domain/validation.dart';
@@ -191,14 +192,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final result = blocked ? null : calculate(input);
-    final facts = [
-      input.style.label,
-      if (result != null) ...[
-        '${formatPercent(result.hydration)} hydration',
-        formatMass(result.totalWeight, unit),
-      ],
-      if (input.loaves > 1) '${input.loaves} loaves',
-    ].join(' · ');
+    final facts = _facts(input, result, unit);
 
     return Row(
       children: [
@@ -273,6 +267,16 @@ class _BuiltInBanner extends ConsumerWidget {
   }
 }
 
+/// The header's one line about a recipe, which the widget shows too.
+String _facts(RecipeInput input, Recipe? result, MassUnit unit) => [
+  input.style.label,
+  if (result != null) ...[
+    '${formatPercent(result.hydration)} hydration',
+    formatMass(result.totalWeight, unit),
+  ],
+  if (input.loaves > 1) '${input.loaves} loaves',
+].join(' · ');
+
 class _Menu extends ConsumerWidget {
   const _Menu({required this.recipe});
 
@@ -283,17 +287,50 @@ class _Menu extends ConsumerWidget {
     return PopupMenuButton<String>(
       tooltip: 'More actions',
       onSelected: (action) => switch (action) {
+        'pin' => _pin(context, ref),
         'duplicate' => _duplicate(context, ref),
         'export' => _export(context),
         'delete' => _confirmDelete(context, ref),
         _ => null,
       },
       itemBuilder: (context) => [
+        const PopupMenuItem(value: 'pin', child: Text('Pin to widget')),
         const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
         const PopupMenuItem(value: 'export', child: Text('Export as file')),
         if (!recipe.isSystem)
           const PopupMenuItem(value: 'delete', child: Text('Delete')),
       ],
+    );
+  }
+
+  /// The widget shows the pinned recipe whenever no bake is running. Android
+  /// can place the widget from here; iOS leaves that to the home screen.
+  Future<void> _pin(BuildContext context, WidgetRef ref) async {
+    final widget = ref.read(homeScreenWidgetProvider);
+    final input = recipe.input;
+    final result = validate(input).hasErrors ? null : calculate(input);
+    await widget.pin((
+      id: recipe.id,
+      name: recipe.name,
+      line: _facts(input, result, ref.read(settingsProvider).unit),
+    ));
+    final canAdd = await widget.canAddToHomeScreen();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          canAdd
+              ? 'Pinned to the widget'
+              : 'Pinned. Add the Baker\'s Calculator widget from your home '
+                    'screen to see it.',
+        ),
+        action: canAdd
+            ? SnackBarAction(
+                label: 'Add widget',
+                onPressed: widget.addToHomeScreen,
+              )
+            : null,
+      ),
     );
   }
 
@@ -340,6 +377,7 @@ class _Menu extends ConsumerWidget {
 
     final router = GoRouter.of(context);
     await ref.read(libraryProvider.notifier).delete(recipe.id);
+    await ref.read(homeScreenWidgetProvider).unpin(recipe.id);
     router.go('/recipes');
   }
 }

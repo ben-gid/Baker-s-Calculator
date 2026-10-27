@@ -20,6 +20,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../domain/models/active_bake.dart';
 import '../domain/timeline.dart';
+import 'home_screen_widget.dart';
 import 'settings_repository.dart';
 
 enum ScheduleOutcome {
@@ -297,20 +298,41 @@ BakeResponse? parseResponse(NotificationResponse response) {
   return step == null || action == null ? null : (action: action, step: step);
 }
 
-/// A reminder's button pressed outside the app's own isolate. If the app is
-/// alive, the press goes to it; otherwise the saved bake is updated here and
-/// the reminders set again, so the next one is right when it arrives.
-///
-/// ponytail: if the app starts between the lookup and the write, its copy of
-/// the bake is stale until it is reopened; add a version stamp if that bites.
+/// A home-screen widget's button: `bakerscalc://widget/press?action=done&step=3`.
+/// Anything else, a tap on the widget itself included, is null.
+BakeResponse? parseWidgetPress(Uri? uri) {
+  if (uri == null || uri.host != 'widget' || uri.path != '/press') return null;
+  final step = int.tryParse(uri.queryParameters['step'] ?? '');
+  final action = BakeAction.values
+      .where((a) => a.name == uri.queryParameters['action'])
+      .firstOrNull;
+  return step == null || action == null ? null : (action: action, step: step);
+}
+
+/// A reminder's button pressed outside the app's own isolate.
 @pragma('vm:entry-point')
 Future<void> onBackgroundAction(NotificationResponse response) async {
   final parsed = parseResponse(response);
-  if (parsed == null) return;
+  if (parsed != null) await _pressedOutsideApp(parsed);
+}
 
+/// A home-screen widget's button, which always runs in the background.
+@pragma('vm:entry-point')
+Future<void> onWidgetAction(Uri? uri) async {
+  final parsed = parseWidgetPress(uri);
+  if (parsed != null) await _pressedOutsideApp(parsed);
+}
+
+/// If the app is alive, the press goes to it; otherwise the saved bake is
+/// updated here and the reminders and the widget set again, so the next
+/// reminder is right when it arrives.
+///
+/// ponytail: if the app starts between the lookup and the write, its copy of
+/// the bake is stale until it is reopened; add a version stamp if that bites.
+Future<void> _pressedOutsideApp(BakeResponse press) async {
   final app = IsolateNameServer.lookupPortByName(NotificationService._portName);
   if (app != null) {
-    app.send([parsed.action.name, parsed.step]);
+    app.send([press.action.name, press.step]);
     return;
   }
 
@@ -318,9 +340,10 @@ Future<void> onBackgroundAction(NotificationResponse response) async {
   final settings = SettingsRepository(await SharedPreferences.getInstance());
   final bake = settings.readActiveBake();
   if (bake == null) return;
-  final next = bake.apply(parsed.action, parsed.step, DateTime.now());
+  final next = bake.apply(press.action, press.step, DateTime.now());
   await settings.writeActiveBake(next);
   await NotificationService(
     hearsButtons: false,
   ).scheduleBake(next, askPermission: false);
+  await HomeScreenWidget().showBake(next);
 }
